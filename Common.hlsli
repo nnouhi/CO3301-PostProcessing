@@ -129,6 +129,7 @@ cbuffer PostProcessingConstants : register(b1)
 
   	float4 gPolygon2DPoints[4]; // Four points of a polygon in 2D viewport space for polygon post-processing. Matrix transformations already done on C++ side
 
+    
 	// Tint post-process settings
 	float3 gTintColour;
 	float  paddingB;
@@ -145,13 +146,23 @@ cbuffer PostProcessingConstants : register(b1)
 	float  gDistortLevel;
 	float3 paddingD;
 
+    // Gaussian Blur post-process settings
+    float gBlurAmount;
+    float3 paddingE;
+    
 	// Spiral post-process settings
 	float  gSpiralLevel;
-	float3 paddingE;
+	float3 paddingF;
 
 	// Heat haze post-process settings
 	float  gHeatHazeTimer;
-	float3 paddingF;
+	float3 paddingG;
+    
+    // Vertical Colour Gradient post-process settings
+    float3 gTopColour;
+    float3 gBottomColour;
+    float paddingH;
+    
 }
 
 //**************************

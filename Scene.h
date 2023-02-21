@@ -26,7 +26,7 @@ void ReleaseResources();
 // Scene Render and Update
 //--------------------------------------------------------------------------------------
 
-void RenderScene();
+void RenderScene(float frameTime);
 
 // frameTime is the time passed since the last frame
 void UpdateScene(float frameTime);

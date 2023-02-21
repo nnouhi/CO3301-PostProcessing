@@ -33,6 +33,9 @@
 enum class PostProcess
 {
 	None,
+	VerticalColourGradient,
+	GaussianBlur,
+
 	Copy,
 	Tint,
 	GreyNoise,
@@ -484,60 +487,95 @@ void RenderSceneFromCamera(Camera* camera)
 
 // Select the appropriate shader plus any additional textures required for a given post-process
 // Helper function shared by full-screen, area and polygon post-processing functions below
-void SelectPostProcessShaderAndTextures(PostProcess postProcess)
+void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime)
 {
 	if (postProcess == PostProcess::Copy)
 	{
 		gD3DContext->PSSetShader(gCopyPostProcess, nullptr, 0);
 	}
-
-	else if (postProcess == PostProcess::Tint)
+	else if (postProcess == PostProcess::GaussianBlur)
 	{
-		gD3DContext->PSSetShader(gTintPostProcess, nullptr, 0);
-	}
+		gD3DContext->PSSetShader(gGaussianBlurProcess, nullptr, 0);
 
+		// Set the blur strength
+		gPostProcessingConstants.blurAmount = 0.001f;
+	}
+	else if (postProcess == PostProcess::VerticalColourGradient)
+	{
+		gD3DContext->PSSetShader(gVerticalColourGradientProcess, nullptr, 0);
+
+		// Set the top and bottom colours of the gradient
+		gPostProcessingConstants.topColour = { 0.0f, 0.0f, 1.0f };
+		gPostProcessingConstants.bottomColour = { 0.0f, 1.0f, 1.0f };
+	}
 	else if (postProcess == PostProcess::GreyNoise)
 	{
 		gD3DContext->PSSetShader(gGreyNoisePostProcess, nullptr, 0);
+
+		// Noise scaling adjusts how fine the grey noise is.
+		const float grainSize = 140; // Fineness of the noise grain
+		gPostProcessingConstants.noiseScale = { gViewportWidth / grainSize, gViewportHeight / grainSize };
+
+		// The noise offset is randomised to give a constantly changing noise effect (like tv static)
+		gPostProcessingConstants.noiseOffset = { Random(0.0f, 1.0f), Random(0.0f, 1.0f) };
 
 		// Give pixel shader access to the noise texture
 		gD3DContext->PSSetShaderResources(1, 1, &gNoiseMapSRV);
 		gD3DContext->PSSetSamplers(1, 1, &gTrilinearSampler);
 	}
-
 	else if (postProcess == PostProcess::Burn)
 	{
 		gD3DContext->PSSetShader(gBurnPostProcess, nullptr, 0);
+
+		// Set and increase the burn level (cycling back to 0 when it reaches 1.0f)
+		const float burnSpeed = 0.2f;
+		gPostProcessingConstants.burnHeight = fmod(gPostProcessingConstants.burnHeight + burnSpeed * frameTime, 1.0f);
 
 		// Give pixel shader access to the burn texture (basically a height map that the burn level ascends)
 		gD3DContext->PSSetShaderResources(1, 1, &gBurnMapSRV);
 		gD3DContext->PSSetSamplers(1, 1, &gTrilinearSampler);
 	}
-
 	else if (postProcess == PostProcess::Distort)
 	{
 		gD3DContext->PSSetShader(gDistortPostProcess, nullptr, 0);
+
+		// Set the level of distortion
+		gPostProcessingConstants.distortLevel = 0.03f;
 
 		// Give pixel shader access to the distortion texture (containts 2D vectors (in R & G) to shift the texture UVs to give a cut-glass impression)
 		gD3DContext->PSSetShaderResources(1, 1, &gDistortMapSRV);
 		gD3DContext->PSSetSamplers(1, 1, &gTrilinearSampler);
 	}
-
 	else if (postProcess == PostProcess::Spiral)
 	{
 		gD3DContext->PSSetShader(gSpiralPostProcess, nullptr, 0);
-	}
 
+		// Set and increase the amount of spiral - use a tweaked cos wave to animate
+		static float wiggle = 0.0f;
+		const float wiggleSpeed = 1.0f;
+		gPostProcessingConstants.spiralLevel = ((1.0f - cos(wiggle)) * 4.0f);
+		wiggle += wiggleSpeed * frameTime;
+	}
 	else if (postProcess == PostProcess::HeatHaze)
 	{
 		gD3DContext->PSSetShader(gHeatHazePostProcess, nullptr, 0);
+
+		// Update heat haze timer
+		gPostProcessingConstants.heatHazeTimer += frameTime;
+	}
+	else if (postProcess == PostProcess::Tint)
+	{
+		gD3DContext->PSSetShader(gTintPostProcess, nullptr, 0);
+
+		// Colour for tint shader
+		gPostProcessingConstants.tintColour = { 1.0f, 0.0f, 0.0f };
 	}
 }
 
 
 
 // Perform a full-screen post process from "scene texture" to back buffer
-void FullScreenPostProcess(PostProcess postProcess)
+void FullScreenPostProcess(PostProcess postProcess, float frameTime)
 {
 	// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
 	gD3DContext->OMSetRenderTargets(1, &gBackBufferRenderTarget, gDepthStencil);
@@ -565,7 +603,7 @@ void FullScreenPostProcess(PostProcess postProcess)
 
 
 	// Select shader and textures needed for the required post-processes (helper function above)
-	SelectPostProcessShaderAndTextures(postProcess);
+	SelectPostProcessShaderAndTextures(postProcess, frameTime);
 
 
 	// Set 2D area for full-screen post-processing (coordinates in 0->1 range)
@@ -586,10 +624,10 @@ void FullScreenPostProcess(PostProcess postProcess)
 
 
 // Perform an area post process from "scene texture" to back buffer at a given point in the world, with a given size (world units)
-void AreaPostProcess(PostProcess postProcess, CVector3 worldPoint, CVector2 areaSize)
+void AreaPostProcess(PostProcess postProcess, CVector3 worldPoint, CVector2 areaSize, float frameTime)
 {
 	// First perform a full-screen copy of the scene to back-buffer
-	FullScreenPostProcess(PostProcess::Copy);
+	FullScreenPostProcess(PostProcess::Copy, frameTime);
 	
 
 	// Now perform a post-process of a portion of the scene to the back-buffer (overwriting some of the copy above)
@@ -598,7 +636,7 @@ void AreaPostProcess(PostProcess postProcess, CVector3 worldPoint, CVector2 area
 	//       aware of all the work that the above function did that was also preparation for this post-process area step
 
 	// Select shader/textures needed for required post-process
-	SelectPostProcessShaderAndTextures(postProcess);
+	SelectPostProcessShaderAndTextures(postProcess, frameTime);
 
 	// Enable alpha blending - area effects need to fade out at the edges or the hard edge of the area is visible
 	// A couple of the shaders have been updated to put the effect into a soft circle
@@ -653,10 +691,10 @@ void AreaPostProcess(PostProcess postProcess, CVector3 worldPoint, CVector2 area
 
 
 // Perform an post process from "scene texture" to back buffer within the given four-point polygon and a world matrix to position/rotate/scale the polygon
-void PolygonPostProcess(PostProcess postProcess, const std::array<CVector3, 4>& points, const CMatrix4x4& worldMatrix)
+void PolygonPostProcess(PostProcess postProcess, const std::array<CVector3, 4>& points, const CMatrix4x4& worldMatrix, float frameTime)
 {
 	// First perform a full-screen copy of the scene to back-buffer
-	FullScreenPostProcess(PostProcess::Copy);
+	FullScreenPostProcess(PostProcess::Copy, frameTime);
 
 
 	// Now perform a post-process of a portion of the scene to the back-buffer (overwriting some of the copy above)
@@ -665,7 +703,7 @@ void PolygonPostProcess(PostProcess postProcess, const std::array<CVector3, 4>& 
 	//       aware of all the work that the above function did that was also preparation for this post-process area step
 
 	// Select shader/textures needed for required post-process
-	SelectPostProcessShaderAndTextures(postProcess);
+	SelectPostProcessShaderAndTextures(postProcess, frameTime);
 
 	// Loop through the given points, transform each to 2D (this is what the vertex shader normally does in most labs)
 	for (unsigned int i = 0; i < points.size(); ++i)
@@ -692,7 +730,7 @@ void PolygonPostProcess(PostProcess postProcess, const std::array<CVector3, 4>& 
 
 
 // Rendering the scene
-void RenderScene()
+void RenderScene(float frameTime)
 {
 	//// Common settings ////
 
@@ -750,13 +788,13 @@ void RenderScene()
 	{
 		if (gCurrentPostProcessMode == PostProcessMode::Fullscreen)
 		{
-			FullScreenPostProcess(gCurrentPostProcess);
+			FullScreenPostProcess(gCurrentPostProcess, frameTime);
 		}
 
 		else if (gCurrentPostProcessMode == PostProcessMode::Area)
 		{
 			// Pass a 3D point for the centre of the affected area and the size of the (rectangular) area in world units
-			AreaPostProcess(gCurrentPostProcess, gCube->Position(), { 10, 10});
+			AreaPostProcess(gCurrentPostProcess, gCube->Position(), { 10, 10}, frameTime);
 		}
 
 		else if (gCurrentPostProcessMode == PostProcessMode::Polygon)
@@ -770,7 +808,7 @@ void RenderScene()
 			polyMatrix = MatrixRotationY(ToRadians(1)) * polyMatrix;
 			
 			// Pass an array of 4 points and a matrix. Only supports 4 points.
-			PolygonPostProcess(gCurrentPostProcess, points, polyMatrix);
+			PolygonPostProcess(gCurrentPostProcess, points, polyMatrix, frameTime);
 
 		}
 
@@ -801,44 +839,16 @@ void UpdateScene(float frameTime)
 	if (KeyHit(Key_X))  gCurrentPostProcessMode = PostProcessMode::Area; // F2
 	if (KeyHit(Key_C))  gCurrentPostProcessMode = PostProcessMode::Polygon; // F3
 
-	if (KeyHit(Key_1))   gCurrentPostProcess = PostProcess::Tint;
-	if (KeyHit(Key_2))   gCurrentPostProcess = PostProcess::GreyNoise;
+	if (KeyHit(Key_1))   gCurrentPostProcess = PostProcess::VerticalColourGradient;
+	if (KeyHit(Key_2))   gCurrentPostProcess = PostProcess::GaussianBlur;
 	if (KeyHit(Key_3))   gCurrentPostProcess = PostProcess::Burn;
 	if (KeyHit(Key_4))   gCurrentPostProcess = PostProcess::Distort;
 	if (KeyHit(Key_5))   gCurrentPostProcess = PostProcess::Spiral;
 	if (KeyHit(Key_6))   gCurrentPostProcess = PostProcess::HeatHaze;
+	if (KeyHit(Key_7))   gCurrentPostProcess = PostProcess::Tint;
+	if (KeyHit(Key_8))   gCurrentPostProcess = PostProcess::GreyNoise;
 	if (KeyHit(Key_9))   gCurrentPostProcess = PostProcess::Copy;
 	if (KeyHit(Key_0))   gCurrentPostProcess = PostProcess::None;
-
-	// Post processing settings - all data for post-processes is updated every frame whether in use or not (minimal cost)
-	
-	// Colour for tint shader
-	gPostProcessingConstants.tintColour = { 1, 0, 0 };
-
-	// Noise scaling adjusts how fine the grey noise is.
-	const float grainSize = 140; // Fineness of the noise grain
-	gPostProcessingConstants.noiseScale  = { gViewportWidth / grainSize, gViewportHeight / grainSize };
-
-	// The noise offset is randomised to give a constantly changing noise effect (like tv static)
-	gPostProcessingConstants.noiseOffset = { Random(0.0f, 1.0f), Random(0.0f, 1.0f) };
-
-	// Set and increase the burn level (cycling back to 0 when it reaches 1.0f)
-	const float burnSpeed = 0.2f;
-	gPostProcessingConstants.burnHeight = fmod(gPostProcessingConstants.burnHeight + burnSpeed * frameTime, 1.0f);
-
-	// Set the level of distortion
-	gPostProcessingConstants.distortLevel = 0.03f;
-
-	// Set and increase the amount of spiral - use a tweaked cos wave to animate
-	static float wiggle = 0.0f;
-	const float wiggleSpeed = 1.0f;
-	gPostProcessingConstants.spiralLevel = ((1.0f - cos(wiggle)) * 4.0f );
-	wiggle += wiggleSpeed * frameTime;
-
-	// Update heat haze timer
-	gPostProcessingConstants.heatHazeTimer += frameTime;
-
-	//***********
 
 
 	// Orbit one light - a bit of a cheat with the static variable [ask the tutor if you want to know what this is]

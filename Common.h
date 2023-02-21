@@ -134,13 +134,23 @@ struct PostProcessingConstants
 	float    distortLevel;
 	CVector3 paddingD;
 
+	// Gaussian Blur post-process settings
+	float    blurAmount;
+	CVector3 paddingE;
+
 	// Spiral post-process settings
 	float    spiralLevel;
-	CVector3 paddingE;
+	CVector3 paddingF;
 
 	// Heat haze post-process settings
 	float    heatHazeTimer;
-	CVector3 paddingF;
+	CVector3 paddingG;
+
+	// Vertical Colour Gradient post-process settings
+	CVector3 topColour;
+	CVector3 bottomColour;
+	float paddingH;
+
 };
 extern PostProcessingConstants gPostProcessingConstants;      // This variable holds the CPU-side constant buffer described above
 extern ID3D11Buffer*           gPostProcessingConstantBuffer; // This variable controls the GPU-side constant buffer related to the above structure
