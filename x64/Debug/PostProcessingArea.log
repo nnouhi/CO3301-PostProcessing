@@ -1,0 +1,30 @@
+﻿  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\2DPolygon_pp.cso
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Burn_pp.cso
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Copy_pp.cso
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Distort_pp.cso
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\2DQuad_pp.cso
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\GreyNoise_pp.cso
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\HeatHaze_pp.cso
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Spiral_pp.cso
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\TintedTexture_ps.cso
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\BasicTransform_vs.cso
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\PixelLighting_ps.cso
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\PixelLighting_vs.cso
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Tint_pp.cso
+  Camera.cpp
+  Direct3DSetup.cpp
+  Main.cpp
+  CMatrix4x4.cpp
+  CVector2.cpp
+  CVector3.cpp
+  CVector4.cpp
+  Model.cpp
+  Scene.cpp
+  Shader.cpp
+  Mesh.cpp
+  State.cpp
+  Input.cpp
+  GraphicsHelpers.cpp
+  Timer.cpp
+  Generating Code...
+  PostProcessingArea.vcxproj -> D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\PostProcessingArea.exe

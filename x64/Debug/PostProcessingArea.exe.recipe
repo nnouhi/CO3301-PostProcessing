@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\PostProcessingArea.exe</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\2DPolygon_pp.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Burn_pp.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Copy_pp.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Distort_pp.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\2DQuad_pp.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\GreyNoise_pp.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\HeatHaze_pp.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Spiral_pp.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\TintedTexture_ps.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\BasicTransform_vs.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\PixelLighting_ps.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\PixelLighting_vs.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Tint_pp.cso</FullPath>
+    </ContentFile>
+  </ContentFiles>
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>
