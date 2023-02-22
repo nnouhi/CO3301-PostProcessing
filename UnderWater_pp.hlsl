@@ -33,7 +33,7 @@ float4 main(PostProcessingInput input) : SV_Target
 	
 	// Offset for scene texture UV based on haze effect
 	// Adjust size of UV offset based on the constant EffectStrength, the overall size of area being processed, and the alpha value calculated above
-    float2 waterOffset = float2(SinY, SinX) * effectStrength * gArea2DSize;
+    float2 waterOffset = float2(SinY, SinX) * effectStrength;
 
 	// Get pixel from scene texture, offset using haze
     float3 colour = SceneTexture.Sample(PointSample, input.sceneUV + waterOffset).rgb * underWaterColour;

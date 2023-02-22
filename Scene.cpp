@@ -24,7 +24,8 @@
 #include <memory>
 
 #include <map>
-
+#include <vector>
+#include <stack>
 
 //--------------------------------------------------------------------------------------
 // Scene Data
@@ -57,7 +58,7 @@ enum class PostProcessMode
 
 auto gCurrentPostProcess     = PostProcess::None;
 auto gCurrentPostProcessMode = PostProcessMode::Fullscreen;
-
+std::vector<std::pair<PostProcess, PostProcessMode>> gPostProcessAndModeStack;
 //********************
 
 
@@ -159,7 +160,30 @@ ID3D11ShaderResourceView* gCubeDiffuseSpecularMapSRV = nullptr;
 ID3D11Resource*           gLightDiffuseMap = nullptr;
 ID3D11ShaderResourceView* gLightDiffuseMapSRV = nullptr;
 
+/* NOTE TO SELF
 
+The relation between a render target view (RTV) and a shader resource view (SRV) is that they both reference the same underlying texture resource in GPU memory, but with different access and usage semantics.
+
+A render target view (RTV) is a view object that is bound to a texture resource in GPU memory and allows rendering to that texture. It provides a way for the graphics pipeline to write data to the texture, such as pixel colors, depth values, or stencil values, during the rendering process.
+
+A shader resource view (SRV) is a view object that is bound to a texture resource in GPU memory and allows shaders to access the contents of that texture. It provides a way for the graphics pipeline to read data from the texture, such as pixel colors or depth values, during the rendering process.
+
+In the context of post-processing, a typical workflow involves rendering the scene to a texture using an RTV, then using an SRV to access the texture in a post-processing shader that applies some effect to the rendered image.
+
+This allows the post-processing shader to read the colors or other data from the rendered image and manipulate it in some way before outputting the final result to the screen.
+
+
+The SRV does not get modified directly by the pixel shader.
+
+Instead, the pixel shader reads from the SRV, which is connected to a render target through the output merger stage.
+
+When the scene is rendered to the render target, the output from the pixel shader is written to the render target, which updates the texture stored in the GPU memory.
+
+The updated texture is then passed to the SRV through the shader resource view.
+
+In this way, the SRV is indirectly updated when the scene is rendered to the render target.
+
+*/
 
 //****************************
 // Post processing textures
@@ -169,6 +193,10 @@ ID3D11Texture2D*          gSceneTexture      = nullptr; // This object represent
 ID3D11RenderTargetView*   gSceneRenderTarget = nullptr; // This object is used when we want to render to the texture above
 ID3D11ShaderResourceView* gSceneTextureSRV   = nullptr; // This object is used to give shaders access to the texture above (SRV = shader resource view)
 
+// This texture will have the scene renderered on it. Then the texture is then used for post-processing
+ID3D11Texture2D*          gSceneTextureTwo = nullptr; // This object represents the memory used by the texture on the GPU
+ID3D11RenderTargetView*   gSceneRenderTargetTwo = nullptr; // This object is used when we want to render to the texture above
+ID3D11ShaderResourceView* gSceneTextureSRVTwo = nullptr; // This object is used to give shaders access to the texture above (SRV = shader resource view)
 
 // Additional textures used for specific post-processes
 ID3D11Resource*           gNoiseMap = nullptr;
@@ -178,6 +206,7 @@ ID3D11ShaderResourceView* gBurnMapSRV = nullptr;
 ID3D11Resource*           gDistortMap = nullptr;
 ID3D11ShaderResourceView* gDistortMapSRV = nullptr;
 
+ID3D11ShaderResourceView* nullSRV = nullptr;
 
 //****************************
 
@@ -197,7 +226,7 @@ bool InitGeometry()
 	try
 	{
 		gStarsMesh  = new Mesh("Stars.x");
-		gGroundMesh = new Mesh("Hills.x");
+		gGroundMesh = new Mesh("Floor.x");
 		gCubeMesh   = new Mesh("Cube.x");
 		gCrateMesh  = new Mesh("CargoContainer.x");
 		gLightMesh  = new Mesh("Light.x");
@@ -258,8 +287,6 @@ bool InitGeometry()
 		return false;
 	}
 
-
-
 	//********************************************
 	//**** Create Scene Texture
 
@@ -286,9 +313,23 @@ bool InitGeometry()
 		return false;
 	}
 
+	// Second texture
+	if (FAILED(gD3DDevice->CreateTexture2D(&sceneTextureDesc, NULL, &gSceneTextureTwo)))
+	{
+		gLastError = "Error creating scene texture two";
+		return false;
+	}
+
 	// We created the scene texture above, now we get a "view" of it as a render target, i.e. get a special pointer to the texture that
 	// we use when rendering to it (see RenderScene function below)
 	if (FAILED(gD3DDevice->CreateRenderTargetView(gSceneTexture, NULL, &gSceneRenderTarget)))
+	{
+		gLastError = "Error creating scene render target view";
+		return false;
+	}
+
+	// Second texture
+	if (FAILED(gD3DDevice->CreateRenderTargetView(gSceneTextureTwo, NULL, &gSceneRenderTargetTwo)))
 	{
 		gLastError = "Error creating scene render target view";
 		return false;
@@ -306,6 +347,12 @@ bool InitGeometry()
 		return false;
 	}
 
+	// Second texture
+	if (FAILED(gD3DDevice->CreateShaderResourceView(gSceneTextureTwo, &srDesc, &gSceneTextureSRVTwo)))
+	{
+		gLastError = "Error creating scene shader resource view";
+		return false;
+	}
 
 	return true;
 }
@@ -367,6 +414,10 @@ void ReleaseResources()
 	if (gSceneTextureSRV)              gSceneTextureSRV->Release();
 	if (gSceneRenderTarget)            gSceneRenderTarget->Release();
 	if (gSceneTexture)                 gSceneTexture->Release();
+
+	if (gSceneTextureSRVTwo)              gSceneTextureSRVTwo->Release();
+	if (gSceneRenderTargetTwo)            gSceneRenderTargetTwo->Release();
+	if (gSceneTextureTwo)                 gSceneTextureTwo->Release();
 
 	if (gDistortMapSRV)                gDistortMapSRV->Release();
 	if (gDistortMap)                   gDistortMap->Release();
@@ -503,6 +554,23 @@ void RenderSceneFromCamera(Camera* camera)
 
 //**************************
 
+//--------------------------------------------------------------------------------------
+// Helper Methods
+//--------------------------------------------------------------------------------------
+
+void AddProcessAndMode(PostProcess process, PostProcessMode mode)
+{
+	gPostProcessAndModeStack.push_back(std::pair<PostProcess, PostProcessMode>(std::make_pair(process, mode)));
+}
+
+void RemoveProcessAndMode()
+{
+	if (gPostProcessAndModeStack.size() > 0)
+	{
+		gPostProcessAndModeStack.pop_back();
+	}
+}
+
 // Select the appropriate shader plus any additional textures required for a given post-process
 // Helper function shared by full-screen, area and polygon post-processing functions below
 void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime)
@@ -598,19 +666,12 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 }
 
 
+//**********************
+// Post Process Modes
 
 // Perform a full-screen post process from "scene texture" to back buffer
-void FullScreenPostProcess(PostProcess postProcess, float frameTime)
+void FullScreenPostProcess(PostProcess postProcess, float frameTime, int processIndex)
 {
-	// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
-	gD3DContext->OMSetRenderTargets(1, &gBackBufferRenderTarget, gDepthStencil);
-
-	
-	// Give the pixel shader (post-processing shader) access to the scene texture 
-	gD3DContext->PSSetShaderResources(0, 1, &gSceneTextureSRV);
-	gD3DContext->PSSetSamplers(0, 1, &gPointSampler); // Use point sampling (no bilinear, trilinear, mip-mapping etc. for most post-processes)
-
-
 	// Using special vertex shader that creates its own data for a 2D screen quad
 	gD3DContext->VSSetShader(g2DQuadVertexShader, nullptr, 0);
 	gD3DContext->GSSetShader(nullptr, nullptr, 0);  // Switch off geometry shader when not using it (pass nullptr for first parameter)
@@ -626,6 +687,30 @@ void FullScreenPostProcess(PostProcess postProcess, float frameTime)
 	gD3DContext->IASetInputLayout(NULL); // No vertex data
 	gD3DContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
+	// These lines unbind the scene texture from the pixel shader to stop DirectX issuing a warning when we try to render to it again next frame
+	gD3DContext->PSSetShaderResources(0, 1, &nullSRV);
+
+	if (processIndex % 2 == 0)
+	{
+		// Render first post-process to second render target texture
+		
+		// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
+		gD3DContext->OMSetRenderTargets(1, &gSceneRenderTargetTwo, gDepthStencil); // Where to render
+
+		// Give the pixel shader (post-processing shader) access to the scene texture 
+		// Use the 'first' texture's contents on the 'second' render pass
+		gD3DContext->PSSetShaderResources(0, 1, &gSceneTextureSRV); // Which input (previous in this case)
+	}
+	else
+	{
+		// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
+		gD3DContext->OMSetRenderTargets(1, &gSceneRenderTarget, gDepthStencil);
+
+		// Give the pixel shader (post-processing shader) access to the scene texture 
+		gD3DContext->PSSetShaderResources(0, 1, &gSceneTextureSRVTwo);
+	}
+
+	gD3DContext->PSSetSamplers(0, 1, &gPointSampler); // Use point sampling (no bilinear, trilinear, mip-mapping etc. for most post-processes)
 
 	// Select shader and textures needed for the required post-processes (helper function above)
 	SelectPostProcessShaderAndTextures(postProcess, frameTime);
@@ -645,14 +730,20 @@ void FullScreenPostProcess(PostProcess postProcess, float frameTime)
 
 	// Draw a quad
 	gD3DContext->Draw(4, 0);
+
+	// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
+	gD3DContext->OMSetRenderTargets(1, &gBackBufferRenderTarget, gDepthStencil);
+
+	// Draw a quad
+	gD3DContext->Draw(4, 0);
 }
 
 
 // Perform an area post process from "scene texture" to back buffer at a given point in the world, with a given size (world units)
-void AreaPostProcess(PostProcess postProcess, CVector3 worldPoint, CVector2 areaSize, float frameTime)
+void AreaPostProcess(PostProcess postProcess, CVector3 worldPoint, CVector2 areaSize, float frameTime, int processIndex)
 {
 	// First perform a full-screen copy of the scene to back-buffer
-	FullScreenPostProcess(PostProcess::Copy, frameTime);
+	FullScreenPostProcess(PostProcess::Copy, frameTime, processIndex);
 	
 
 	// Now perform a post-process of a portion of the scene to the back-buffer (overwriting some of the copy above)
@@ -716,10 +807,10 @@ void AreaPostProcess(PostProcess postProcess, CVector3 worldPoint, CVector2 area
 
 
 // Perform an post process from "scene texture" to back buffer within the given four-point polygon and a world matrix to position/rotate/scale the polygon
-void PolygonPostProcess(PostProcess postProcess, const std::array<CVector3, 4>& points, const CMatrix4x4& worldMatrix, float frameTime)
+void PolygonPostProcess(PostProcess postProcess, const std::array<CVector3, 4>& points, const CMatrix4x4& worldMatrix, float frameTime, int processIndex)
 {
 	// First perform a full-screen copy of the scene to back-buffer
-	FullScreenPostProcess(PostProcess::Copy, frameTime);
+	FullScreenPostProcess(PostProcess::Copy, frameTime, processIndex);
 
 
 	// Now perform a post-process of a portion of the scene to the back-buffer (overwriting some of the copy above)
@@ -750,6 +841,7 @@ void PolygonPostProcess(PostProcess postProcess, const std::array<CVector3, 4>& 
 	gD3DContext->Draw(4, 0);
 }
 
+//**********************
 
 //**************************
 
@@ -780,8 +872,9 @@ void RenderScene(float frameTime)
 	// Set the target for rendering and select the main depth buffer.
 	// If using post-processing then render to the scene texture, otherwise to the usual back buffer
 	// Also clear the render target to a fixed colour and the depth buffer to the far distance
-	if (gCurrentPostProcess != PostProcess::None)
+	if (gPostProcessAndModeStack.size() != 0)
 	{
+		// Render scene to first render target texture
 		gD3DContext->OMSetRenderTargets(1, &gSceneRenderTarget, gDepthStencil);
 		gD3DContext->ClearRenderTargetView(gSceneRenderTarget, &gBackgroundColor.r);
 	}
@@ -790,6 +883,7 @@ void RenderScene(float frameTime)
 		gD3DContext->OMSetRenderTargets(1, &gBackBufferRenderTarget, gDepthStencil);
 		gD3DContext->ClearRenderTargetView(gBackBufferRenderTarget, &gBackgroundColor.r);
 	}
+
 	gD3DContext->ClearDepthStencilView(gDepthStencil, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
 	// Setup the viewport to the size of the main window
@@ -808,45 +902,74 @@ void RenderScene(float frameTime)
 
 	////--------------- Scene completion ---------------////
 
-	// Run any post-processing steps
-	if (gCurrentPostProcess != PostProcess::None)
+	if (gPostProcessAndModeStack.size() != 0)
 	{
-		if (gCurrentPostProcessMode == PostProcessMode::Fullscreen)
+		int processIndex = 0;
+		for (std::pair<PostProcess, PostProcessMode> postProcessAndMode : gPostProcessAndModeStack)
 		{
-			FullScreenPostProcess(gCurrentPostProcess, frameTime);
-		}
+			gCurrentPostProcess = postProcessAndMode.first;
+			gCurrentPostProcessMode = postProcessAndMode.second;
 
-		else if (gCurrentPostProcessMode == PostProcessMode::Area)
-		{
-			// Pass a 3D point for the centre of the affected area and the size of the (rectangular) area in world units
-			AreaPostProcess(gCurrentPostProcess, gCube->Position(), { 10, 10}, frameTime);
-		}
+			if (gCurrentPostProcessMode == PostProcessMode::Fullscreen)
+			{
+				FullScreenPostProcess(gCurrentPostProcess, frameTime, processIndex++);
+			}
+			else if (gCurrentPostProcessMode == PostProcessMode::Polygon)
+			{
+				const std::array<CVector3, 4> points = {{ {0, 5, 0}, {-5, 0, 0}, {5, 0, 0}, {0, -5, 0} }}; // C++ strangely needs an extra pair of {} here... only for std:array...
 
-		else if (gCurrentPostProcessMode == PostProcessMode::Polygon)
-		{
-			// An array of four points in world space - a tapered square centred at the origin
-
-			const std::array<CVector3, 4> points = {{ {0, 5, 0}, {-5, 0, 0}, {5, 0, 0}, {0, -5, 0} }}; // C++ strangely needs an extra pair of {} here... only for std:array...
-
-			// A rotating matrix placing the model above in the scene
-			static CMatrix4x4 polyMatrix = MatrixTranslation({ 20, 15, 0 });
-			polyMatrix = MatrixRotationY(ToRadians(1)) * polyMatrix;
+				// A rotating matrix placing the model above in the scene
+				static CMatrix4x4 polyMatrix = MatrixTranslation({ 20, 15, 0 });
+				polyMatrix = MatrixRotationY(ToRadians(1)) * polyMatrix;
 			
-			// Pass an array of 4 points and a matrix. Only supports 4 points.
-			PolygonPostProcess(gCurrentPostProcess, points, polyMatrix, frameTime);
-
+				// Pass an array of 4 points and a matrix. Only supports 4 points.
+				PolygonPostProcess(gCurrentPostProcess, points, polyMatrix, frameTime, processIndex++);
+			}
+			else if (gCurrentPostProcessMode == PostProcessMode::Area)
+			{
+				AreaPostProcess(gCurrentPostProcess, gCube->Position(), { 10, 10 }, frameTime, processIndex++);
+			}
 		}
-
-		// These lines unbind the scene texture from the pixel shader to stop DirectX issuing a warning when we try to render to it again next frame
-		ID3D11ShaderResourceView* nullSRV = nullptr;
-		gD3DContext->PSSetShaderResources(0, 1, &nullSRV);
 	}
+
+
+	//// Run any post-processing steps
+	//if (gCurrentPostProcess != PostProcess::None)
+	//{
+	//	if (gCurrentPostProcessMode == PostProcessMode::Fullscreen)
+	//	{
+	//		FullScreenPostProcess(gCurrentPostProcess, frameTime);
+	//	}
+
+	//	else if (gCurrentPostProcessMode == PostProcessMode::Area)
+	//	{
+	//		// Pass a 3D point for the centre of the affected area and the size of the (rectangular) area in world units
+	//		AreaPostProcess(gCurrentPostProcess, gCube->Position(), { 10, 10}, frameTime);
+	//	}
+
+	//	else if (gCurrentPostProcessMode == PostProcessMode::Polygon)
+	//	{
+	//		// An array of four points in world space - a tapered square centred at the origin
+
+	//		const std::array<CVector3, 4> points = {{ {0, 5, 0}, {-5, 0, 0}, {5, 0, 0}, {0, -5, 0} }}; // C++ strangely needs an extra pair of {} here... only for std:array...
+
+	//		// A rotating matrix placing the model above in the scene
+	//		static CMatrix4x4 polyMatrix = MatrixTranslation({ 20, 15, 0 });
+	//		polyMatrix = MatrixRotationY(ToRadians(1)) * polyMatrix;
+	//		
+	//		// Pass an array of 4 points and a matrix. Only supports 4 points.
+	//		PolygonPostProcess(gCurrentPostProcess, points, polyMatrix, frameTime);
+	//	}
+
+	//	// These lines unbind the scene texture from the pixel shader to stop DirectX issuing a warning when we try to render to it again next frame
+	//	ID3D11ShaderResourceView* nullSRV = nullptr;
+	//	gD3DContext->PSSetShaderResources(0, 1, &nullSRV);
+	//}
 
 	// When drawing to the off-screen back buffer is complete, we "present" the image to the front buffer (the screen)
 	// Set first parameter to 1 to lock to vsync
 	gSwapChain->Present(lockFPS ? 1 : 0, 0);
 }
-
 
 //--------------------------------------------------------------------------------------
 // Scene Update
@@ -864,29 +987,29 @@ void UpdateScene(float frameTime)
 	if (KeyHit(Key_X))  gCurrentPostProcessMode = PostProcessMode::Area; // F2
 	if (KeyHit(Key_C))  gCurrentPostProcessMode = PostProcessMode::Polygon; // F3
 
-	if (KeyHit(Key_1)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::VerticalColourGradient]) ? PostProcess::VerticalColourGradient : PostProcess::None; isActivePostProcessMap[PostProcess::VerticalColourGradient] = !isActivePostProcessMap[PostProcess::VerticalColourGradient]; }
+	if (KeyHit(Key_1)) { AddProcessAndMode(PostProcess::VerticalColourGradient, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_2)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::GaussianBlur]) ? PostProcess::GaussianBlur : PostProcess::None; isActivePostProcessMap[PostProcess::GaussianBlur] = !isActivePostProcessMap[PostProcess::GaussianBlur]; }
+	if (KeyHit(Key_2)) { AddProcessAndMode(PostProcess::GaussianBlur, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_3)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::UnderWater]) ? PostProcess::UnderWater : PostProcess::None; isActivePostProcessMap[PostProcess::UnderWater] = !isActivePostProcessMap[PostProcess::UnderWater]; }
+	if (KeyHit(Key_3)) { AddProcessAndMode(PostProcess::UnderWater, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_4)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::Burn]) ? PostProcess::Burn : PostProcess::None; isActivePostProcessMap[PostProcess::Burn] = !isActivePostProcessMap[PostProcess::Burn]; }
+	if (KeyHit(Key_4)) { AddProcessAndMode(PostProcess::Burn, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_5)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::Distort]) ? PostProcess::Distort : PostProcess::None; isActivePostProcessMap[PostProcess::Distort] = !isActivePostProcessMap[PostProcess::Distort]; }
+	if (KeyHit(Key_5)) { AddProcessAndMode(PostProcess::Distort, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_6)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::Spiral]) ? PostProcess::Spiral : PostProcess::None; isActivePostProcessMap[PostProcess::Spiral] = !isActivePostProcessMap[PostProcess::Spiral]; }
+	if (KeyHit(Key_6)) { AddProcessAndMode(PostProcess::Spiral, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_7)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::HeatHaze]) ? PostProcess::HeatHaze : PostProcess::None; isActivePostProcessMap[PostProcess::HeatHaze] = !isActivePostProcessMap[PostProcess::HeatHaze]; }
+	if (KeyHit(Key_7)) { AddProcessAndMode(PostProcess::HeatHaze, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_8)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::Tint]) ? PostProcess::Tint : PostProcess::None; isActivePostProcessMap[PostProcess::Tint] = !isActivePostProcessMap[PostProcess::Tint]; }
+	if (KeyHit(Key_8)) { AddProcessAndMode(PostProcess::Tint, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_9)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::GreyNoise]) ? PostProcess::GreyNoise : PostProcess::None; isActivePostProcessMap[PostProcess::GreyNoise] = !isActivePostProcessMap[PostProcess::GreyNoise]; }
+	if (KeyHit(Key_9)) { AddProcessAndMode(PostProcess::GreyNoise, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_Q)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::Copy]) ? PostProcess::Copy : PostProcess::None; isActivePostProcessMap[PostProcess::Copy] = !isActivePostProcessMap[PostProcess::Copy]; }
+	if (KeyHit(Key_Q)) { AddProcessAndMode(PostProcess::Copy, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_0)) { gCurrentPostProcess = PostProcess::None; }
+	if (KeyHit(Key_0)) { gPostProcessAndModeStack.clear(); }
 
-
+	if (KeyHit(Key_Back)) { RemoveProcessAndMode(); }
 
 	// Orbit one light - a bit of a cheat with the static variable [ask the tutor if you want to know what this is]
 	static float lightRotate = 0.0f;
