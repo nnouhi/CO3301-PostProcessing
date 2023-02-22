@@ -146,10 +146,14 @@ struct PostProcessingConstants
 	float    heatHazeTimer;
 	CVector3 paddingG;
 
+	// UnderWater post-process settings
+	float    underWaterTimer;
+	CVector3 paddingH;
+
 	// Vertical Colour Gradient post-process settings
 	CVector3 topColour;
 	CVector3 bottomColour;
-	float paddingH;
+	float paddingI;
 
 };
 extern PostProcessingConstants gPostProcessingConstants;      // This variable holds the CPU-side constant buffer described above

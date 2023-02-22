@@ -23,6 +23,8 @@
 #include <sstream>
 #include <memory>
 
+#include <map>
+
 
 //--------------------------------------------------------------------------------------
 // Scene Data
@@ -35,6 +37,7 @@ enum class PostProcess
 	None,
 	VerticalColourGradient,
 	GaussianBlur,
+	UnderWater,
 
 	Copy,
 	Tint,
@@ -64,6 +67,21 @@ const float MOVEMENT_SPEED = 50.0f; // Units per second for movement (what a uni
 
 // Lock FPS to monitor refresh rate, which will typically set it to 60fps. Press 'p' to toggle to full fps
 bool lockFPS = true;
+std::map<PostProcess, bool> isActivePostProcessMap
+{
+	{PostProcess::VerticalColourGradient, false},
+	{PostProcess::GaussianBlur, false},
+	{PostProcess::UnderWater, false},
+	{PostProcess::Copy, false},
+	{PostProcess::Tint, false},
+	{PostProcess::GreyNoise, false},
+	{PostProcess::Burn, false},
+	{PostProcess::Distort, false},
+	{PostProcess::Spiral, false},
+	{PostProcess::HeatHaze, false},
+
+};
+
 
 
 // Meshes, models and cameras, same meaning as TL-Engine. Meshes prepared in InitGeometry function, Models & camera in InitScene
@@ -493,6 +511,13 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	{
 		gD3DContext->PSSetShader(gCopyPostProcess, nullptr, 0);
 	}
+	else if (postProcess == PostProcess::UnderWater)
+	{
+		gD3DContext->PSSetShader(gUnderWaterProcess, nullptr, 0);
+
+		// Update the underwater timer
+		gPostProcessingConstants.underWaterTimer += frameTime;
+	}
 	else if (postProcess == PostProcess::GaussianBlur)
 	{
 		gD3DContext->PSSetShader(gGaussianBlurProcess, nullptr, 0);
@@ -839,16 +864,28 @@ void UpdateScene(float frameTime)
 	if (KeyHit(Key_X))  gCurrentPostProcessMode = PostProcessMode::Area; // F2
 	if (KeyHit(Key_C))  gCurrentPostProcessMode = PostProcessMode::Polygon; // F3
 
-	if (KeyHit(Key_1))   gCurrentPostProcess = PostProcess::VerticalColourGradient;
-	if (KeyHit(Key_2))   gCurrentPostProcess = PostProcess::GaussianBlur;
-	if (KeyHit(Key_3))   gCurrentPostProcess = PostProcess::Burn;
-	if (KeyHit(Key_4))   gCurrentPostProcess = PostProcess::Distort;
-	if (KeyHit(Key_5))   gCurrentPostProcess = PostProcess::Spiral;
-	if (KeyHit(Key_6))   gCurrentPostProcess = PostProcess::HeatHaze;
-	if (KeyHit(Key_7))   gCurrentPostProcess = PostProcess::Tint;
-	if (KeyHit(Key_8))   gCurrentPostProcess = PostProcess::GreyNoise;
-	if (KeyHit(Key_9))   gCurrentPostProcess = PostProcess::Copy;
-	if (KeyHit(Key_0))   gCurrentPostProcess = PostProcess::None;
+	if (KeyHit(Key_1)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::VerticalColourGradient]) ? PostProcess::VerticalColourGradient : PostProcess::None; isActivePostProcessMap[PostProcess::VerticalColourGradient] = !isActivePostProcessMap[PostProcess::VerticalColourGradient]; }
+	
+	if (KeyHit(Key_2)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::GaussianBlur]) ? PostProcess::GaussianBlur : PostProcess::None; isActivePostProcessMap[PostProcess::GaussianBlur] = !isActivePostProcessMap[PostProcess::GaussianBlur]; }
+	
+	if (KeyHit(Key_3)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::UnderWater]) ? PostProcess::UnderWater : PostProcess::None; isActivePostProcessMap[PostProcess::UnderWater] = !isActivePostProcessMap[PostProcess::UnderWater]; }
+	
+	if (KeyHit(Key_4)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::Burn]) ? PostProcess::Burn : PostProcess::None; isActivePostProcessMap[PostProcess::Burn] = !isActivePostProcessMap[PostProcess::Burn]; }
+	
+	if (KeyHit(Key_5)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::Distort]) ? PostProcess::Distort : PostProcess::None; isActivePostProcessMap[PostProcess::Distort] = !isActivePostProcessMap[PostProcess::Distort]; }
+	
+	if (KeyHit(Key_6)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::Spiral]) ? PostProcess::Spiral : PostProcess::None; isActivePostProcessMap[PostProcess::Spiral] = !isActivePostProcessMap[PostProcess::Spiral]; }
+	
+	if (KeyHit(Key_7)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::HeatHaze]) ? PostProcess::HeatHaze : PostProcess::None; isActivePostProcessMap[PostProcess::HeatHaze] = !isActivePostProcessMap[PostProcess::HeatHaze]; }
+	
+	if (KeyHit(Key_8)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::Tint]) ? PostProcess::Tint : PostProcess::None; isActivePostProcessMap[PostProcess::Tint] = !isActivePostProcessMap[PostProcess::Tint]; }
+	
+	if (KeyHit(Key_9)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::GreyNoise]) ? PostProcess::GreyNoise : PostProcess::None; isActivePostProcessMap[PostProcess::GreyNoise] = !isActivePostProcessMap[PostProcess::GreyNoise]; }
+	
+	if (KeyHit(Key_Q)) { gCurrentPostProcess = (!isActivePostProcessMap[PostProcess::Copy]) ? PostProcess::Copy : PostProcess::None; isActivePostProcessMap[PostProcess::Copy] = !isActivePostProcessMap[PostProcess::Copy]; }
+	
+	if (KeyHit(Key_0)) { gCurrentPostProcess = PostProcess::None; }
+
 
 
 	// Orbit one light - a bit of a cheat with the static variable [ask the tutor if you want to know what this is]

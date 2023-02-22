@@ -158,10 +158,14 @@ cbuffer PostProcessingConstants : register(b1)
 	float  gHeatHazeTimer;
 	float3 paddingG;
     
+    // UnderWater post-process settings
+    float gUnderWaterTimer;
+    float3 paddingH;
+    
     // Vertical Colour Gradient post-process settings
     float3 gTopColour;
     float3 gBottomColour;
-    float paddingH;
+    float paddingI;
     
 }
 
