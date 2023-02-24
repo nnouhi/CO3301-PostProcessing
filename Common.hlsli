@@ -162,10 +162,14 @@ cbuffer PostProcessingConstants : register(b1)
     float gUnderWaterTimer;
     float3 paddingH;
     
+    // Hue Vertical Colour Gradient post-process settings
+    float gAmountOfHueShift;
+    float3 paddingI;
+    
     // Vertical Colour Gradient post-process settings
     float3 gTopColour;
     float3 gBottomColour;
-    float paddingI;
+    float paddingJ;
     
 }
 

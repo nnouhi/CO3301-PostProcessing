@@ -1,2 +1,4 @@
-﻿  Scene.cpp
+﻿D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\HueVerticalColourGradient_pp.hlsl(25,13-27): warning X3207: Initializer used on a global 'const' variable. This requires setting an external constant. If a literal is desired, use 'static const' instead.
+  
+  compilation object save succeeded; see D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\HueVerticalColourGradient_pp.cso
   PostProcessingArea.vcxproj -> D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\PostProcessingArea.exe

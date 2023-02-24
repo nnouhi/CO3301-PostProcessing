@@ -27,6 +27,7 @@
 #include <vector>
 #include <stack>
 
+
 //--------------------------------------------------------------------------------------
 // Scene Data
 //--------------------------------------------------------------------------------------
@@ -39,6 +40,7 @@ enum class PostProcess
 	VerticalColourGradient,
 	GaussianBlur,
 	UnderWater,
+	HueVerticalColourGradient,
 
 	Copy,
 	Tint,
@@ -73,6 +75,7 @@ std::map<PostProcess, bool> isActivePostProcessMap
 	{PostProcess::VerticalColourGradient, false},
 	{PostProcess::GaussianBlur, false},
 	{PostProcess::UnderWater, false},
+	{PostProcess::HueVerticalColourGradient, false},
 	{PostProcess::Copy, false},
 	{PostProcess::Tint, false},
 	{PostProcess::GreyNoise, false},
@@ -207,6 +210,7 @@ ID3D11Resource*           gDistortMap = nullptr;
 ID3D11ShaderResourceView* gDistortMapSRV = nullptr;
 
 ID3D11ShaderResourceView* nullSRV = nullptr;
+
 
 //****************************
 
@@ -578,6 +582,16 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	if (postProcess == PostProcess::Copy)
 	{
 		gD3DContext->PSSetShader(gCopyPostProcess, nullptr, 0);
+	}
+	else if (postProcess == PostProcess::HueVerticalColourGradient)
+	{
+		gD3DContext->PSSetShader(gHueVerticalColourGradientProcess, nullptr, 0);
+
+		gPostProcessingConstants.amountOfHueShift += frameTime;
+
+		// Set the top and bottom colours of the gradient
+		gPostProcessingConstants.topColour = { 0.0f, 0.0f, 1.0f };
+		gPostProcessingConstants.bottomColour = { 0.0f, 1.0f, 1.0f };
 	}
 	else if (postProcess == PostProcess::UnderWater)
 	{
@@ -1006,6 +1020,10 @@ void UpdateScene(float frameTime)
 	if (KeyHit(Key_9)) { AddProcessAndMode(PostProcess::GreyNoise, PostProcessMode::Fullscreen); }
 	
 	if (KeyHit(Key_Q)) { AddProcessAndMode(PostProcess::Copy, PostProcessMode::Fullscreen); }
+
+	if (KeyHit(Key_Q)) { AddProcessAndMode(PostProcess::Copy, PostProcessMode::Fullscreen); }
+
+	if (KeyHit(Key_E)) { AddProcessAndMode(PostProcess::HueVerticalColourGradient, PostProcessMode::Fullscreen); }
 	
 	if (KeyHit(Key_0)) { gPostProcessAndModeStack.clear(); }
 

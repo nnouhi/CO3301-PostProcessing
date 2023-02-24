@@ -150,10 +150,14 @@ struct PostProcessingConstants
 	float    underWaterTimer;
 	CVector3 paddingH;
 
+	// Hue Vertical Colour Gradient post-process settings
+	float amountOfHueShift;
+	CVector3 paddingI;
+
 	// Vertical Colour Gradient post-process settings
 	CVector3 topColour;
 	CVector3 bottomColour;
-	float paddingI;
+	float paddingK;
 
 };
 extern PostProcessingConstants gPostProcessingConstants;      // This variable holds the CPU-side constant buffer described above
