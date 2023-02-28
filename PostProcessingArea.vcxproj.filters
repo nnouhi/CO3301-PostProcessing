@@ -130,13 +130,16 @@
     <FxCompile Include="VerticalColourGradient_pp.hlsl">
       <Filter>Post-Processing Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="GaussianBlur_pp.hlsl">
+    <FxCompile Include="GaussianBlurVertical_pp.hlsl">
       <Filter>Post-Processing Shaders</Filter>
     </FxCompile>
     <FxCompile Include="UnderWater_pp.hlsl">
       <Filter>Post-Processing Shaders</Filter>
     </FxCompile>
     <FxCompile Include="HueVerticalColourGradient_pp.hlsl">
+      <Filter>Post-Processing Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="GuassianBlurHorizontal_pp.hlsl">
       <Filter>Post-Processing Shaders</Filter>
     </FxCompile>
   </ItemGroup>

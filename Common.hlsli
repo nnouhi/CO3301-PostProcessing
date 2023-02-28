@@ -163,13 +163,15 @@ cbuffer PostProcessingConstants : register(b1)
     float3 paddingH;
     
     // Hue Vertical Colour Gradient post-process settings
-    float gAmountOfHueShift;
+    float gElapsedTime;
     float3 paddingI;
+    float gPeriod;
+    float3 paddingJ;
     
     // Vertical Colour Gradient post-process settings
     float3 gTopColour;
     float3 gBottomColour;
-    float paddingJ;
+    float paddingK;
     
 }
 

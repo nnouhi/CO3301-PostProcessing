@@ -47,23 +47,9 @@ float4 main(PostProcessingInput input) : SV_Target
 float3 GetNewColour(float3 startingColour)
 {  
     float3 hsl = RGBtoHSL(startingColour);
-    
-    hsl.x += ShiftHue(gAmountOfHueShift);   
-    
-    // Reached maximum value of hue wheel, reset to 0
-    if (hsl.x > 1.0f)
-    {
-        hsl.x = 0.0f;
-    }
-    
+    float t = gElapsedTime + hsl.x * gPeriod;
+    hsl.x = (t - floor(t / gPeriod) * gPeriod) / gPeriod;
     return HSLtoRGB(hsl);
-}
-
-float ShiftHue(float amountOfHueShift)
-{
-    const float Amplitude = 0.314f;
-    const float Frequency = 1.0f;
-    return sin(amountOfHueShift * Frequency) * Amplitude;
 }
 
 // Methods used for RGB -> HSL conversion

@@ -35,9 +35,10 @@ ID3D11PixelShader*  gDistortPostProcess    = nullptr;
 ID3D11PixelShader*  gSpiralPostProcess     = nullptr;
 ID3D11PixelShader*  gHeatHazePostProcess   = nullptr;
 ID3D11PixelShader* gVerticalColourGradientProcess = nullptr;
-ID3D11PixelShader* gGaussianBlurProcess = nullptr;
 ID3D11PixelShader* gUnderWaterProcess = nullptr;
 ID3D11PixelShader* gHueVerticalColourGradientProcess = nullptr;
+ID3D11PixelShader* gGaussianBlurVerticalProcess = nullptr;
+ID3D11PixelShader* gGaussianBlurHorizontalProcess = nullptr;
 
 
 
@@ -70,9 +71,10 @@ bool LoadShaders()
 	gSpiralPostProcess      = LoadPixelShader ("Spiral_pp");
 	gHeatHazePostProcess    = LoadPixelShader ("HeatHaze_pp");
 	gVerticalColourGradientProcess = LoadPixelShader("VerticalColourGradient_pp");
-	gGaussianBlurProcess = LoadPixelShader("GaussianBlur_pp");
 	gUnderWaterProcess = LoadPixelShader("UnderWater_pp");
 	gHueVerticalColourGradientProcess = LoadPixelShader("HueVerticalColourGradient_pp");
+	gGaussianBlurVerticalProcess = LoadPixelShader("GaussianBlurVertical_pp");
+	gGaussianBlurHorizontalProcess = LoadPixelShader("GuassianBlurHorizontal_pp");
 
 	if (gBasicTransformVertexShader == nullptr || gPixelLightingVertexShader     == nullptr ||
 		gTintedTexturePixelShader   == nullptr || gPixelLightingPixelShader      == nullptr ||
@@ -81,8 +83,8 @@ bool LoadShaders()
 		gGreyNoisePostProcess       == nullptr || gBurnPostProcess               == nullptr ||
 		gDistortPostProcess         == nullptr || gSpiralPostProcess             == nullptr ||
 		g2DPolygonVertexShader      == nullptr || gVerticalColourGradientProcess == nullptr ||
-		gGaussianBlurProcess        == nullptr || gUnderWaterProcess             == nullptr ||
-		gHueVerticalColourGradientProcess == nullptr)
+		gGaussianBlurVerticalProcess == nullptr || gGaussianBlurHorizontalProcess == nullptr ||
+		gUnderWaterProcess == nullptr || gHueVerticalColourGradientProcess == nullptr)
 	{
 		gLastError = "Error loading shaders";
 		return false;
@@ -94,9 +96,10 @@ bool LoadShaders()
 
 void ReleaseShaders()
 {
-	if (gHueVerticalColourGradientProcess)		       gHueVerticalColourGradientProcess->Release();
+	if (gGaussianBlurHorizontalProcess)  gGaussianBlurHorizontalProcess->Release();
+	if (gGaussianBlurVerticalProcess)  gGaussianBlurVerticalProcess->Release();
+	if (gHueVerticalColourGradientProcess) gHueVerticalColourGradientProcess->Release();
 	if (gUnderWaterProcess)		       gUnderWaterProcess->Release();
-	if (gGaussianBlurProcess)		   gGaussianBlurProcess->Release();
 	if (gVerticalColourGradientProcess)gVerticalColourGradientProcess->Release();
 	if (gHeatHazePostProcess)          gHeatHazePostProcess       ->Release();
 	if (gSpiralPostProcess)            gSpiralPostProcess         ->Release();

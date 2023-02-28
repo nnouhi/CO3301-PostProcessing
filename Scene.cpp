@@ -38,7 +38,8 @@ enum class PostProcess
 {
 	None,
 	VerticalColourGradient,
-	GaussianBlur,
+	GaussianBlurHorizontal,
+	GaussianBlurVertical,
 	UnderWater,
 	HueVerticalColourGradient,
 
@@ -72,8 +73,9 @@ const float MOVEMENT_SPEED = 50.0f; // Units per second for movement (what a uni
 bool lockFPS = true;
 std::map<PostProcess, bool> isActivePostProcessMap
 {
+	{PostProcess::GaussianBlurHorizontal, false},
+	{PostProcess::GaussianBlurVertical, false},
 	{PostProcess::VerticalColourGradient, false},
-	{PostProcess::GaussianBlur, false},
 	{PostProcess::UnderWater, false},
 	{PostProcess::HueVerticalColourGradient, false},
 	{PostProcess::Copy, false},
@@ -571,7 +573,16 @@ void RemoveProcessAndMode()
 {
 	if (gPostProcessAndModeStack.size() > 0)
 	{
-		gPostProcessAndModeStack.pop_back();
+		// If we're removing a vertical Gaussian blur, we need to remove the horizontal one too since its a 2 pass process
+		if (gCurrentPostProcess == PostProcess::GaussianBlurVertical)
+		{
+			gPostProcessAndModeStack.pop_back();
+			gPostProcessAndModeStack.pop_back();
+		}
+		else
+		{
+			gPostProcessAndModeStack.pop_back();
+		}
 	}
 }
 
@@ -587,7 +598,8 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	{
 		gD3DContext->PSSetShader(gHueVerticalColourGradientProcess, nullptr, 0);
 
-		gPostProcessingConstants.amountOfHueShift += frameTime;
+		gPostProcessingConstants.elapsedTime += frameTime;
+		gPostProcessingConstants.period = 4;
 
 		// Set the top and bottom colours of the gradient
 		gPostProcessingConstants.topColour = { 0.0f, 0.0f, 1.0f };
@@ -600,12 +612,15 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 		// Update the underwater timer
 		gPostProcessingConstants.underWaterTimer += frameTime;
 	}
-	else if (postProcess == PostProcess::GaussianBlur)
+	else if (postProcess == PostProcess::GaussianBlurHorizontal)
 	{
-		gD3DContext->PSSetShader(gGaussianBlurProcess, nullptr, 0);
-
-		// Set the blur strength
-		gPostProcessingConstants.blurAmount = 0.001f;
+		gPostProcessingConstants.blurAmount = 1.0f;
+		gD3DContext->PSSetShader(gGaussianBlurHorizontalProcess, nullptr, 0);
+	}
+	else if (postProcess == PostProcess::GaussianBlurVertical)
+	{
+		gPostProcessingConstants.blurAmount = 1.0f;
+		gD3DContext->PSSetShader(gGaussianBlurVerticalProcess, nullptr, 0);
 	}
 	else if (postProcess == PostProcess::VerticalColourGradient)
 	{
@@ -1003,7 +1018,7 @@ void UpdateScene(float frameTime)
 
 	if (KeyHit(Key_1)) { AddProcessAndMode(PostProcess::VerticalColourGradient, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_2)) { AddProcessAndMode(PostProcess::GaussianBlur, PostProcessMode::Fullscreen); }
+	if (KeyHit(Key_2)) { AddProcessAndMode(PostProcess::GaussianBlurHorizontal, PostProcessMode::Fullscreen); AddProcessAndMode(PostProcess::GaussianBlurVertical, PostProcessMode::Fullscreen); }
 	
 	if (KeyHit(Key_3)) { AddProcessAndMode(PostProcess::UnderWater, PostProcessMode::Fullscreen); }
 	

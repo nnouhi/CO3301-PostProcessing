@@ -151,8 +151,10 @@ struct PostProcessingConstants
 	CVector3 paddingH;
 
 	// Hue Vertical Colour Gradient post-process settings
-	float amountOfHueShift;
+	float elapsedTime;
 	CVector3 paddingI;
+	float period;
+	CVector3 paddingJ;
 
 	// Vertical Colour Gradient post-process settings
 	CVector3 topColour;
