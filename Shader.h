@@ -37,6 +37,7 @@ extern ID3D11PixelShader*  gUnderWaterProcess;
 extern ID3D11PixelShader* gHueVerticalColourGradientProcess;
 extern ID3D11PixelShader* gGaussianBlurVerticalProcess;
 extern ID3D11PixelShader* gGaussianBlurHorizontalProcess;
+extern ID3D11PixelShader* gNightVisionProcess;
 
 
 

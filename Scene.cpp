@@ -37,6 +37,7 @@
 enum class PostProcess
 {
 	None,
+	NightVision,
 	VerticalColourGradient,
 	GaussianBlurHorizontal,
 	GaussianBlurVertical,
@@ -73,6 +74,7 @@ const float MOVEMENT_SPEED = 50.0f; // Units per second for movement (what a uni
 bool lockFPS = true;
 std::map<PostProcess, bool> isActivePostProcessMap
 {
+	{PostProcess::NightVision, false},
 	{PostProcess::GaussianBlurHorizontal, false},
 	{PostProcess::GaussianBlurVertical, false},
 	{PostProcess::VerticalColourGradient, false},
@@ -594,6 +596,11 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	{
 		gD3DContext->PSSetShader(gCopyPostProcess, nullptr, 0);
 	}
+	else if (postProcess == PostProcess::NightVision)
+	{
+		gD3DContext->PSSetShader(gNightVisionProcess, nullptr, 0);
+
+	}
 	else if (postProcess == PostProcess::HueVerticalColourGradient)
 	{
 		gD3DContext->PSSetShader(gHueVerticalColourGradientProcess, nullptr, 0);
@@ -1039,6 +1046,8 @@ void UpdateScene(float frameTime)
 	if (KeyHit(Key_Q)) { AddProcessAndMode(PostProcess::Copy, PostProcessMode::Fullscreen); }
 
 	if (KeyHit(Key_E)) { AddProcessAndMode(PostProcess::HueVerticalColourGradient, PostProcessMode::Fullscreen); }
+
+	if (KeyHit(Key_R)) { AddProcessAndMode(PostProcess::NightVision, PostProcessMode::Fullscreen); }
 	
 	if (KeyHit(Key_0)) { gPostProcessAndModeStack.clear(); }
 
