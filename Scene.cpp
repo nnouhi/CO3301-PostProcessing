@@ -43,6 +43,9 @@ enum class PostProcess
 	GaussianBlurVertical,
 	UnderWater,
 	HueVerticalColourGradient,
+	Sepia,
+	Inverted,
+	Contour,
 
 	Copy,
 	Tint,
@@ -63,6 +66,8 @@ enum class PostProcessMode
 auto gCurrentPostProcess     = PostProcess::None;
 auto gCurrentPostProcessMode = PostProcessMode::Fullscreen;
 std::vector<std::pair<PostProcess, PostProcessMode>> gPostProcessAndModeStack;
+std::vector<PostProcess> windowPostProcesses;
+const int NUM_OF_WINDOWS = 4;
 //********************
 
 
@@ -72,23 +77,23 @@ const float MOVEMENT_SPEED = 50.0f; // Units per second for movement (what a uni
 
 // Lock FPS to monitor refresh rate, which will typically set it to 60fps. Press 'p' to toggle to full fps
 bool lockFPS = true;
-std::map<PostProcess, bool> isActivePostProcessMap
-{
-	{PostProcess::NightVision, false},
-	{PostProcess::GaussianBlurHorizontal, false},
-	{PostProcess::GaussianBlurVertical, false},
-	{PostProcess::VerticalColourGradient, false},
-	{PostProcess::UnderWater, false},
-	{PostProcess::HueVerticalColourGradient, false},
-	{PostProcess::Copy, false},
-	{PostProcess::Tint, false},
-	{PostProcess::GreyNoise, false},
-	{PostProcess::Burn, false},
-	{PostProcess::Distort, false},
-	{PostProcess::Spiral, false},
-	{PostProcess::HeatHaze, false},
-
-};
+//std::map<PostProcess, bool> isActivePostProcessMap
+//{
+//	{PostProcess::NightVision, false},
+//	{PostProcess::GaussianBlurHorizontal, false},
+//	{PostProcess::GaussianBlurVertical, false},
+//	{PostProcess::VerticalColourGradient, false},
+//	{PostProcess::UnderWater, false},
+//	{PostProcess::HueVerticalColourGradient, false},
+//	{PostProcess::Copy, false},
+//	{PostProcess::Tint, false},
+//	{PostProcess::GreyNoise, false},
+//	{PostProcess::Burn, false},
+//	{PostProcess::Distort, false},
+//	{PostProcess::Spiral, false},
+//	{PostProcess::HeatHaze, false},
+//
+//};
 
 
 
@@ -98,11 +103,13 @@ Mesh* gGroundMesh;
 Mesh* gCubeMesh;
 Mesh* gCrateMesh;
 Mesh* gLightMesh;
+Mesh* gWallMesh;
 
 Model* gStars;
 Model* gGround;
 Model* gCube;
 Model* gCrate;
+Model* gWall;
 
 Camera* gCamera;
 
@@ -163,6 +170,8 @@ ID3D11Resource*           gCrateDiffuseSpecularMap = nullptr;
 ID3D11ShaderResourceView* gCrateDiffuseSpecularMapSRV = nullptr;
 ID3D11Resource*           gCubeDiffuseSpecularMap = nullptr;
 ID3D11ShaderResourceView* gCubeDiffuseSpecularMapSRV = nullptr;
+ID3D11Resource*			  gWallDifuseSpecularMap = nullptr;
+ID3D11ShaderResourceView* gWallDifuseSpecularMapSRV = nullptr;
 
 ID3D11Resource*           gLightDiffuseMap = nullptr;
 ID3D11ShaderResourceView* gLightDiffuseMapSRV = nullptr;
@@ -218,7 +227,11 @@ ID3D11ShaderResourceView* nullSRV = nullptr;
 
 //****************************
 
-
+// Helper method signatures
+void AddProcessAndMode(PostProcess process, PostProcessMode mode);
+void RemoveProcessAndMode();
+std::array<CVector3, 4> GetWindowPoint(int windowIndex);
+void CreateWindowPostProcesses(std::vector<PostProcess> windowPostProcesses);
 
 //--------------------------------------------------------------------------------------
 // Initialise scene geometry, constant buffers and states
@@ -237,7 +250,8 @@ bool InitGeometry()
 		gGroundMesh = new Mesh("Floor.x");
 		gCubeMesh   = new Mesh("Cube.x");
 		gCrateMesh  = new Mesh("CargoContainer.x");
-		gLightMesh  = new Mesh("Light.x");
+		gLightMesh = new Mesh("Light.x");
+		gWallMesh  = new Mesh("Wall2.x");
 	}
 	catch (std::runtime_error e)  // Constructors cannot return error messages so use exceptions to catch mesh errors (fairly standard approach this)
 	{
@@ -254,7 +268,8 @@ bool InitGeometry()
 	// The function will fill in these pointers with usable data. The variables used here are globals found near the top of the file.
 	if (!LoadTexture("Stars.jpg",                &gStarsDiffuseSpecularMap,  &gStarsDiffuseSpecularMapSRV) ||
 		!LoadTexture("GrassDiffuseSpecular.dds", &gGroundDiffuseSpecularMap, &gGroundDiffuseSpecularMapSRV) ||
-		!LoadTexture("StoneDiffuseSpecular.dds", &gCubeDiffuseSpecularMap,   &gCubeDiffuseSpecularMapSRV) ||
+		!LoadTexture("StoneDiffuseSpecular.dds", &gCubeDiffuseSpecularMap, &gCubeDiffuseSpecularMapSRV) ||
+		!LoadTexture("brick_35.jpg", &gWallDifuseSpecularMap,   &gWallDifuseSpecularMapSRV) ||
 		!LoadTexture("CargoA.dds",               &gCrateDiffuseSpecularMap,  &gCrateDiffuseSpecularMapSRV) ||
 		!LoadTexture("Flare.jpg",                &gLightDiffuseMap,          &gLightDiffuseMapSRV) ||
 		!LoadTexture("Noise.png",                &gNoiseMap,   &gNoiseMapSRV) ||
@@ -376,6 +391,7 @@ bool InitScene()
 	gGround = new Model(gGroundMesh);
 	gCube   = new Model(gCubeMesh);
 	gCrate  = new Model(gCrateMesh);
+	gWall	= new Model(gWallMesh);
 
 	// Initial positions
 	gCube->SetPosition({ 42, 5, -10 });
@@ -385,6 +401,9 @@ bool InitScene()
 	gCrate->SetRotation({ 0.0f, ToRadians(40.0f), 0.0f });
 	gCrate->SetScale(6.0f);
 	gStars->SetScale(8000.0f);
+	gWall->SetPosition({ 50, 0, -50 });
+	gWall->SetRotation({ 0.0f, ToRadians(-180.0f), 0.0f });
+	gWall->SetScale(50.0f);
 
 
 	// Light set-up - using an array this time
@@ -407,8 +426,17 @@ bool InitScene()
 	////--------------- Set up camera ---------------////
 
 	gCamera = new Camera();
-	gCamera->SetPosition({ 25, 18, -45 });
-	gCamera->SetRotation({ ToRadians(10.0f), ToRadians(7.0f), 0.0f });
+	gCamera->SetPosition({ 125, 20, 75 });
+	gCamera->SetRotation({ ToRadians(10.0f), ToRadians(270.0f), 0.0f });
+
+
+	// Create post processes for windows
+	windowPostProcesses.push_back(PostProcess::NightVision);
+	windowPostProcesses.push_back(PostProcess::Contour);
+	windowPostProcesses.push_back(PostProcess::Sepia);
+	windowPostProcesses.push_back(PostProcess::Inverted);
+	
+	CreateWindowPostProcesses(windowPostProcesses);
 
 	return true;
 }
@@ -440,6 +468,8 @@ void ReleaseResources()
 	if (gCrateDiffuseSpecularMap)      gCrateDiffuseSpecularMap->Release();
 	if (gCubeDiffuseSpecularMapSRV)    gCubeDiffuseSpecularMapSRV->Release();
 	if (gCubeDiffuseSpecularMap)       gCubeDiffuseSpecularMap->Release();
+	if (gWallDifuseSpecularMapSRV)       gWallDifuseSpecularMapSRV->Release();
+	if (gWallDifuseSpecularMap)    gWallDifuseSpecularMap->Release();
 	if (gGroundDiffuseSpecularMapSRV)  gGroundDiffuseSpecularMapSRV->Release();
 	if (gGroundDiffuseSpecularMap)     gGroundDiffuseSpecularMap->Release();
 	if (gStarsDiffuseSpecularMapSRV)   gStarsDiffuseSpecularMapSRV->Release();
@@ -461,10 +491,12 @@ void ReleaseResources()
 	delete gCube;    gCube = nullptr;
 	delete gGround;  gGround = nullptr;
 	delete gStars;   gStars = nullptr;
+	delete gWall;	 gWall = nullptr;
 
 	delete gLightMesh;   gLightMesh = nullptr;
 	delete gCrateMesh;   gCrateMesh = nullptr;
 	delete gCubeMesh;    gCubeMesh = nullptr;
+	delete gWallMesh;    gWallMesh = nullptr;
 	delete gGroundMesh;  gGroundMesh = nullptr;
 	delete gStarsMesh;   gStarsMesh = nullptr;
 }
@@ -517,6 +549,9 @@ void RenderSceneFromCamera(Camera* camera)
 	gD3DContext->PSSetShaderResources(0, 1, &gCubeDiffuseSpecularMapSRV); // First parameter must match texture slot number in the shader
 	gCube->Render();
 
+	gD3DContext->PSSetShaderResources(0, 1, &gWallDifuseSpecularMapSRV); // First parameter must match texture slot number in the shader
+	gWall->Render();
+
 
 	////--------------- Render sky ---------------////
 
@@ -566,27 +601,6 @@ void RenderSceneFromCamera(Camera* camera)
 // Helper Methods
 //--------------------------------------------------------------------------------------
 
-void AddProcessAndMode(PostProcess process, PostProcessMode mode)
-{
-	gPostProcessAndModeStack.push_back(std::pair<PostProcess, PostProcessMode>(std::make_pair(process, mode)));
-}
-
-void RemoveProcessAndMode()
-{
-	if (gPostProcessAndModeStack.size() > 0)
-	{
-		// If we're removing a vertical Gaussian blur, we need to remove the horizontal one too since its a 2 pass process
-		if (gCurrentPostProcess == PostProcess::GaussianBlurVertical)
-		{
-			gPostProcessAndModeStack.pop_back();
-			gPostProcessAndModeStack.pop_back();
-		}
-		else
-		{
-			gPostProcessAndModeStack.pop_back();
-		}
-	}
-}
 
 // Select the appropriate shader plus any additional textures required for a given post-process
 // Helper function shared by full-screen, area and polygon post-processing functions below
@@ -596,10 +610,21 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	{
 		gD3DContext->PSSetShader(gCopyPostProcess, nullptr, 0);
 	}
+	else if (postProcess == PostProcess::Contour)
+	{
+		gD3DContext->PSSetShader(gContourProcess, nullptr, 0);
+	}
+	else if (postProcess == PostProcess::Inverted)
+	{
+		gD3DContext->PSSetShader(gInvertedProcess, nullptr, 0);
+	}
+	else if (postProcess == PostProcess::Sepia)
+	{
+		gD3DContext->PSSetShader(gSepiaProcess, nullptr, 0);
+	}
 	else if (postProcess == PostProcess::NightVision)
 	{
 		gD3DContext->PSSetShader(gNightVisionProcess, nullptr, 0);
-
 	}
 	else if (postProcess == PostProcess::HueVerticalColourGradient)
 	{
@@ -849,6 +874,31 @@ void PolygonPostProcess(PostProcess postProcess, const std::array<CVector3, 4>& 
 	FullScreenPostProcess(PostProcess::Copy, frameTime, processIndex);
 
 
+	// These lines unbind the scene texture from the pixel shader to stop DirectX issuing a warning when we try to render to it again next frame
+	gD3DContext->PSSetShaderResources(0, 1, &nullSRV);
+
+	if (processIndex % 2 == 0)
+	{
+		// Render first post-process to second render target texture
+
+		// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
+		gD3DContext->OMSetRenderTargets(1, &gSceneRenderTargetTwo, gDepthStencil); // Where to render
+
+		// Give the pixel shader (post-processing shader) access to the scene texture 
+		// Use the 'first' texture's contents on the 'second' render pass
+		gD3DContext->PSSetShaderResources(0, 1, &gSceneTextureSRV); // Which input (previous in this case)
+	}
+	else
+	{
+		// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
+		gD3DContext->OMSetRenderTargets(1, &gSceneRenderTarget, gDepthStencil);
+
+		// Give the pixel shader (post-processing shader) access to the scene texture 
+		gD3DContext->PSSetShaderResources(0, 1, &gSceneTextureSRVTwo);
+	}
+
+	gD3DContext->PSSetSamplers(0, 1, &gPointSampler); // Use point sampling (no bilinear, trilinear, mip-mapping etc. for most post-processes)
+
 	// Now perform a post-process of a portion of the scene to the back-buffer (overwriting some of the copy above)
 	// Note: The following code relies on many of the settings that were prepared in the FullScreenPostProcess call above, it only
 	//       updates a few things that need to be changed for an area process. If you tinker with the code structure you need to be
@@ -874,6 +924,14 @@ void PolygonPostProcess(PostProcess postProcess, const std::array<CVector3, 4>& 
 
 	// Select the special 2D polygon post-processing vertex shader and draw the polygon
 	gD3DContext->VSSetShader(g2DPolygonVertexShader, nullptr, 0);
+
+	// Draw a quad
+	gD3DContext->Draw(4, 0);
+
+	// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
+	gD3DContext->OMSetRenderTargets(1, &gBackBufferRenderTarget, gDepthStencil);
+
+	// Draw a quad
 	gD3DContext->Draw(4, 0);
 }
 
@@ -952,14 +1010,12 @@ void RenderScene(float frameTime)
 			}
 			else if (gCurrentPostProcessMode == PostProcessMode::Polygon)
 			{
-				const std::array<CVector3, 4> points = {{ {0, 5, 0}, {-5, 0, 0}, {5, 0, 0}, {0, -5, 0} }}; // C++ strangely needs an extra pair of {} here... only for std:array...
 
 				// A rotating matrix placing the model above in the scene
-				static CMatrix4x4 polyMatrix = MatrixTranslation({ 20, 15, 0 });
-				polyMatrix = MatrixRotationY(ToRadians(1)) * polyMatrix;
+				static CMatrix4x4 polyMatrix = MatrixTranslation({ 0, 0, 0 });
 			
 				// Pass an array of 4 points and a matrix. Only supports 4 points.
-				PolygonPostProcess(gCurrentPostProcess, points, polyMatrix, frameTime, processIndex++);
+				PolygonPostProcess(gCurrentPostProcess, GetWindowPoint(processIndex), polyMatrix, frameTime, processIndex++);
 			}
 			else if (gCurrentPostProcessMode == PostProcessMode::Area)
 			{
@@ -967,40 +1023,6 @@ void RenderScene(float frameTime)
 			}
 		}
 	}
-
-
-	//// Run any post-processing steps
-	//if (gCurrentPostProcess != PostProcess::None)
-	//{
-	//	if (gCurrentPostProcessMode == PostProcessMode::Fullscreen)
-	//	{
-	//		FullScreenPostProcess(gCurrentPostProcess, frameTime);
-	//	}
-
-	//	else if (gCurrentPostProcessMode == PostProcessMode::Area)
-	//	{
-	//		// Pass a 3D point for the centre of the affected area and the size of the (rectangular) area in world units
-	//		AreaPostProcess(gCurrentPostProcess, gCube->Position(), { 10, 10}, frameTime);
-	//	}
-
-	//	else if (gCurrentPostProcessMode == PostProcessMode::Polygon)
-	//	{
-	//		// An array of four points in world space - a tapered square centred at the origin
-
-	//		const std::array<CVector3, 4> points = {{ {0, 5, 0}, {-5, 0, 0}, {5, 0, 0}, {0, -5, 0} }}; // C++ strangely needs an extra pair of {} here... only for std:array...
-
-	//		// A rotating matrix placing the model above in the scene
-	//		static CMatrix4x4 polyMatrix = MatrixTranslation({ 20, 15, 0 });
-	//		polyMatrix = MatrixRotationY(ToRadians(1)) * polyMatrix;
-	//		
-	//		// Pass an array of 4 points and a matrix. Only supports 4 points.
-	//		PolygonPostProcess(gCurrentPostProcess, points, polyMatrix, frameTime);
-	//	}
-
-	//	// These lines unbind the scene texture from the pixel shader to stop DirectX issuing a warning when we try to render to it again next frame
-	//	ID3D11ShaderResourceView* nullSRV = nullptr;
-	//	gD3DContext->PSSetShaderResources(0, 1, &nullSRV);
-	//}
 
 	// When drawing to the off-screen back buffer is complete, we "present" the image to the front buffer (the screen)
 	// Set first parameter to 1 to lock to vsync
@@ -1019,9 +1041,9 @@ void UpdateScene(float frameTime)
 
 	// Select post process on keys
 	// Switched from F1, F2, F3 to Z, X, C because I don't have F keys on mey keyboard
-	if (KeyHit(Key_Z))  gCurrentPostProcessMode = PostProcessMode::Fullscreen; // F1
-	if (KeyHit(Key_X))  gCurrentPostProcessMode = PostProcessMode::Area; // F2
-	if (KeyHit(Key_C))  gCurrentPostProcessMode = PostProcessMode::Polygon; // F3
+	//if (KeyHit(Key_Z))  gCurrentPostProcessMode = PostProcessMode::Fullscreen; // F1
+	//if (KeyHit(Key_X))  gCurrentPostProcessMode = PostProcessMode::Area; // F2
+	//if (KeyHit(Key_C))  gCurrentPostProcessMode = PostProcessMode::Polygon; // F3
 
 	if (KeyHit(Key_1)) { AddProcessAndMode(PostProcess::VerticalColourGradient, PostProcessMode::Fullscreen); }
 	
@@ -1048,8 +1070,14 @@ void UpdateScene(float frameTime)
 	if (KeyHit(Key_E)) { AddProcessAndMode(PostProcess::HueVerticalColourGradient, PostProcessMode::Fullscreen); }
 
 	if (KeyHit(Key_R)) { AddProcessAndMode(PostProcess::NightVision, PostProcessMode::Fullscreen); }
+
+	if (KeyHit(Key_T)) { AddProcessAndMode(PostProcess::Sepia, PostProcessMode::Fullscreen); }
+
+	if (KeyHit(Key_Y)) { AddProcessAndMode(PostProcess::Inverted, PostProcessMode::Fullscreen); }
+
+	if (KeyHit(Key_U)) { AddProcessAndMode(PostProcess::Contour, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_0)) { gPostProcessAndModeStack.clear(); }
+	if (KeyHit(Key_0)) { gPostProcessAndModeStack.clear(); CreateWindowPostProcesses(windowPostProcesses); }
 
 	if (KeyHit(Key_Back)) { RemoveProcessAndMode(); }
 
@@ -1085,4 +1113,52 @@ void UpdateScene(float frameTime)
 		totalFrameTime = 0;
 		frameCount = 0;
 	}
+}
+
+void CreateWindowPostProcesses(std::vector<PostProcess> windowPostProcesses)
+{
+	for (PostProcess windowPostProcess : windowPostProcesses)
+	{
+		AddProcessAndMode(windowPostProcess, PostProcessMode::Polygon);
+	}
+}
+
+void AddProcessAndMode(PostProcess process, PostProcessMode mode)
+{
+	gPostProcessAndModeStack.push_back(std::pair<PostProcess, PostProcessMode>(std::make_pair(process, mode)));
+}
+
+void RemoveProcessAndMode()
+{
+	if (gPostProcessAndModeStack.size() > NUM_OF_WINDOWS)
+	{
+		// If we're removing a vertical Gaussian blur, we need to remove the horizontal one too since its a 2 pass process
+		if (gCurrentPostProcess == PostProcess::GaussianBlurVertical)
+		{
+			gPostProcessAndModeStack.pop_back();
+			gPostProcessAndModeStack.pop_back();
+		}
+		else
+		{
+			gPostProcessAndModeStack.pop_back();
+		}
+	}
+}
+
+std::array<CVector3, 4> GetWindowPoint(int windowIndex)
+{
+
+	switch (windowIndex)
+	{
+		case 0:
+			return{{ { 22, 25, -50 }, {22, 5, -50 }, {33, 25, -50 }, {33, 5, -50 } }};
+		case 1:
+			return{{ { 36, 25, -50 }, { 36, 5, -50 }, { 49, 25, -50 }, { 49, 5, -50 } }};
+		case 2:
+			return{{ { 50, 25, -50 }, { 50, 5,-50 }, { 63, 25, -50 }, { 63, 5, -50 } }};
+		case 3:
+			return{{  {64, 25, -50 }, { 64, 5, -50 }, { 78 ,25, -50 }, { 78, 5, -50 } }};
+	}
+
+	return std::array<CVector3, 4>();
 }

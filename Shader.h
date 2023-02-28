@@ -38,6 +38,9 @@ extern ID3D11PixelShader* gHueVerticalColourGradientProcess;
 extern ID3D11PixelShader* gGaussianBlurVerticalProcess;
 extern ID3D11PixelShader* gGaussianBlurHorizontalProcess;
 extern ID3D11PixelShader* gNightVisionProcess;
+extern ID3D11PixelShader* gSepiaProcess;
+extern ID3D11PixelShader* gInvertedProcess;
+extern ID3D11PixelShader* gContourProcess;
 
 
 

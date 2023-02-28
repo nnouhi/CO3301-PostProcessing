@@ -40,6 +40,9 @@ ID3D11PixelShader* gHueVerticalColourGradientProcess = nullptr;
 ID3D11PixelShader* gGaussianBlurVerticalProcess = nullptr;
 ID3D11PixelShader* gGaussianBlurHorizontalProcess = nullptr;
 ID3D11PixelShader* gNightVisionProcess = nullptr;
+ID3D11PixelShader* gSepiaProcess = nullptr;
+ID3D11PixelShader* gInvertedProcess = nullptr;
+ID3D11PixelShader* gContourProcess = nullptr;
 
 
 
@@ -77,6 +80,9 @@ bool LoadShaders()
 	gGaussianBlurVerticalProcess = LoadPixelShader("GaussianBlurVertical_pp");
 	gGaussianBlurHorizontalProcess = LoadPixelShader("GuassianBlurHorizontal_pp");
 	gNightVisionProcess = LoadPixelShader("NightVision_pp");
+	gSepiaProcess = LoadPixelShader("Sepia_pp");
+	gInvertedProcess = LoadPixelShader("Inverted_pp");
+	gContourProcess = LoadPixelShader("Contour_pp");
 
 	if (gBasicTransformVertexShader == nullptr || gPixelLightingVertexShader     == nullptr   ||
 		gTintedTexturePixelShader   == nullptr || gPixelLightingPixelShader      == nullptr   ||
@@ -87,7 +93,8 @@ bool LoadShaders()
 		g2DPolygonVertexShader      == nullptr || gVerticalColourGradientProcess == nullptr   ||
 		gGaussianBlurVerticalProcess == nullptr|| gGaussianBlurHorizontalProcess == nullptr   ||
 		gUnderWaterProcess == nullptr          || gHueVerticalColourGradientProcess == nullptr||
-		gNightVisionProcess == nullptr)
+		gNightVisionProcess == nullptr         || gSepiaProcess == nullptr					  ||
+		gInvertedProcess == nullptr			   || gContourProcess == nullptr)
 	{
 		gLastError = "Error loading shaders";
 		return false;
@@ -99,6 +106,9 @@ bool LoadShaders()
 
 void ReleaseShaders()
 {
+	if (gContourProcess)  gContourProcess->Release();
+	if (gInvertedProcess)  gInvertedProcess->Release();
+	if (gSepiaProcess)  gSepiaProcess->Release();
 	if (gNightVisionProcess)  gNightVisionProcess->Release();
 	if (gGaussianBlurHorizontalProcess)  gGaussianBlurHorizontalProcess->Release();
 	if (gGaussianBlurVerticalProcess)  gGaussianBlurVerticalProcess->Release();
