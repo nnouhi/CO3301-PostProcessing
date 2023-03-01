@@ -46,6 +46,7 @@ enum class PostProcess
 	Sepia,
 	Inverted,
 	Contour,
+	GameBoy,
 
 	Copy,
 	Tint,
@@ -610,6 +611,10 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	{
 		gD3DContext->PSSetShader(gCopyPostProcess, nullptr, 0);
 	}
+	else if (postProcess == PostProcess::GameBoy)
+	{
+		gD3DContext->PSSetShader(gGameBoyProcess, nullptr, 0);
+	}
 	else if (postProcess == PostProcess::Contour)
 	{
 		gD3DContext->PSSetShader(gContourProcess, nullptr, 0);
@@ -1076,6 +1081,8 @@ void UpdateScene(float frameTime)
 	if (KeyHit(Key_Y)) { AddProcessAndMode(PostProcess::Inverted, PostProcessMode::Fullscreen); }
 
 	if (KeyHit(Key_U)) { AddProcessAndMode(PostProcess::Contour, PostProcessMode::Fullscreen); }
+
+	if (KeyHit(Key_I)) { AddProcessAndMode(PostProcess::GameBoy, PostProcessMode::Fullscreen); }
 	
 	if (KeyHit(Key_0)) { gPostProcessAndModeStack.clear(); CreateWindowPostProcesses(windowPostProcesses); }
 

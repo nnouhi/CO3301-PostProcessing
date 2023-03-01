@@ -41,6 +41,7 @@ extern ID3D11PixelShader* gNightVisionProcess;
 extern ID3D11PixelShader* gSepiaProcess;
 extern ID3D11PixelShader* gInvertedProcess;
 extern ID3D11PixelShader* gContourProcess;
+extern ID3D11PixelShader* gGameBoyProcess;
 
 
 

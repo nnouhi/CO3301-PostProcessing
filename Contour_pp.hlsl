@@ -15,20 +15,42 @@ Texture2D SceneTexture : register(t0);
 SamplerState PointSample : register(s0); // We don't usually want to filter (bilinear, trilinear etc.) the scene texture when
                                           // post-processing so this sampler will use "point sampling" - no filtering
 
-// Convert RGB color to grayscale
-float3 rgb2gray(float3 color)
+
+// Algorithm found at: https://alexanderameye.github.io/notes/rendering-outlines/
+// and https://jameshfisher.com/2020/08/31/edge-detection-with-sobel-filters/
+
+//--------------------------------------------------------------------------------------
+// Shader code
+//--------------------------------------------------------------------------------------
+
+float3 Rgb2Gray(float3 colour);
+float3 Gray2Rgb(float gray);
+float3 SobelEdgeDetect(float2 texCoord);
+
+// Post-processing shader that tints the scene texture to a given colour
+float4 main(PostProcessingInput input) : SV_Target
 {
-    return (color.r + color.g + color.b) / 3.0f;
+    // Apply Sobel edge detection to the input texture
+    float3 color = SobelEdgeDetect(input.sceneUV);
+
+    // Output the result
+    return float4(color, 1);
+}
+
+// Convert RGB color to grayscale
+float3 Rgb2Gray(float3 colour)
+{
+    return (colour.r + colour.g + colour.b) / 3.0f;
 }
 
 // Convert grayscale value to RGB color
-float3 gray2rgb(float gray)
+float3 Gray2Rgb(float gray)
 {
     return float3(gray, gray, gray);
 }
 
 // Sobel edge detection function
-float3 sobelEdgeDetect(float2 texCoord)
+float3 SobelEdgeDetect(float2 texCoord)
 {
     // Sobel filter kernels
     float3x3 sobelX = float3x3(-1, 0, 1, -2, 0, 2, -1, 0, 1);
@@ -42,9 +64,9 @@ float3 sobelEdgeDetect(float2 texCoord)
     {
         for (int j = -1; j <= 1; j++)
         {
-            float3 color = rgb2gray(SceneTexture.Sample(PointSample, texCoord + float2(i, j) * texelSize).rgb);
-            gx += sobelX[i + 1][j + 1] * color;
-            gy += sobelY[i + 1][j + 1] * color;
+            float3 colour = Rgb2Gray(SceneTexture.Sample(PointSample, texCoord + float2(i, j) * texelSize).rgb);
+            gx += sobelX[i + 1][j + 1] * colour;
+            gy += sobelY[i + 1][j + 1] * colour;
         }
     }
 
@@ -54,22 +76,5 @@ float3 sobelEdgeDetect(float2 texCoord)
     float gradient_mag = sqrt(gx_mag * gx_mag + gy_mag * gy_mag);
 
     // Convert the gradient magnitude to grayscale and return
-    return gray2rgb(gradient_mag);
-}
-
-// Algorithm found at: https://alexanderameye.github.io/notes/rendering-outlines/
-// and https://jameshfisher.com/2020/08/31/edge-detection-with-sobel-filters/
-
-//--------------------------------------------------------------------------------------
-// Shader code
-//--------------------------------------------------------------------------------------
-
-// Post-processing shader that tints the scene texture to a given colour
-float4 main(PostProcessingInput input) : SV_Target
-{
-    // Apply Sobel edge detection to the input texture
-    float3 color = sobelEdgeDetect(input.sceneUV);
-
-    // Output the result
-    return float4(color, 1);
+    return Gray2Rgb(gradient_mag);
 }
