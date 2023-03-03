@@ -50,6 +50,7 @@ enum class PostProcess
 	Bloom,
 	MergeTextures,
 	StarLens,
+	DualFiltering,
 
 	Copy,
 	Tint,
@@ -649,13 +650,17 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	{
 		gD3DContext->PSSetShader(gCopyPostProcess, nullptr, 0);
 	}
+	else if (postProcess == PostProcess::DualFiltering)
+	{
+		gPostProcessingConstants.dualFilterIteration = gPostProcessingConstants.dualFilterIteration + 1;
+		gD3DContext->PSSetShader(gDualFilteringProcess, nullptr, 0);
+	}
 	else if (postProcess == PostProcess::StarLens)
 	{
 		gD3DContext->PSSetShader(gStarLensProcess, nullptr, 0);
 		gPostProcessingConstants.elapsedTime += frameTime;
 
 		//gD3DContext->PSSetShaderResources(1, 1, &gStarLensMapSRV);
-
 	}
 	else if (postProcess == PostProcess::MergeTextures)
 	{
@@ -665,6 +670,7 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	else if (postProcess == PostProcess::Bloom)
 	{
 		gD3DContext->PSSetShader(gBloomProcess, nullptr, 0);
+		gPostProcessingConstants.dualFilterIteration = 0;
 	}
 	else if (postProcess == PostProcess::GameBoy)
 	{
@@ -1151,10 +1157,16 @@ void UpdateScene(float frameTime)
 	if (KeyHit(Key_O)) 
 	{ 
 		AddProcessAndMode(PostProcess::Bloom, PostProcessMode::Fullscreen);
-		//AddProcessAndMode(PostProcess::StarLens, PostProcessMode::Fullscreen);
-		AddProcessAndMode(PostProcess::GaussianBlurHorizontal, PostProcessMode::Fullscreen);
-		AddProcessAndMode(PostProcess::GaussianBlurVertical, PostProcessMode::Fullscreen);
+		int numOfDualFilterings = 8;
+		for (int i = 0; i < numOfDualFilterings; i++)
+		{
+			AddProcessAndMode(PostProcess::DualFiltering, PostProcessMode::Fullscreen);	
+		}
 		AddProcessAndMode(PostProcess::MergeTextures, PostProcessMode::Fullscreen);
+		
+		////AddProcessAndMode(PostProcess::StarLens, PostProcessMode::Fullscreen);
+		//AddProcessAndMode(PostProcess::GaussianBlurHorizontal, PostProcessMode::Fullscreen);
+		//AddProcessAndMode(PostProcess::GaussianBlurVertical, PostProcessMode::Fullscreen);
 	}
 	
 	if (KeyHit(Key_0)) { gPostProcessAndModeStack.clear(); CreateWindowPostProcesses(windowPostProcesses); }

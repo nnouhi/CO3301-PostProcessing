@@ -45,6 +45,7 @@ extern ID3D11PixelShader* gGameBoyProcess;
 extern ID3D11PixelShader* gBloomProcess;
 extern ID3D11PixelShader* gMergeTexturesProcess;
 extern ID3D11PixelShader* gStarLensProcess;
+extern ID3D11PixelShader* gDualFilteringProcess;
 
 
 

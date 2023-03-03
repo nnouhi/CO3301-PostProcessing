@@ -173,6 +173,10 @@ cbuffer PostProcessingConstants : register(b1)
     float3 gBottomColour;
     float paddingK;
     
+    float gDualFilterIteration;
+    float3 paddingL;
+    
+    
 }
 
 //**************************

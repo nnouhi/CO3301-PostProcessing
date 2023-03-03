@@ -166,5 +166,8 @@
     <FxCompile Include="StarLens_pp.hlsl">
       <Filter>Post-Processing Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="DualFiltering_pp.hlsl">
+      <Filter>Post-Processing Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
