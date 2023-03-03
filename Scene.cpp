@@ -47,6 +47,9 @@ enum class PostProcess
 	Inverted,
 	Contour,
 	GameBoy,
+	Bloom,
+	MergeTextures,
+	StarLens,
 
 	Copy,
 	Tint,
@@ -215,7 +218,14 @@ ID3D11Texture2D*          gSceneTextureTwo = nullptr; // This object represents 
 ID3D11RenderTargetView*   gSceneRenderTargetTwo = nullptr; // This object is used when we want to render to the texture above
 ID3D11ShaderResourceView* gSceneTextureSRVTwo = nullptr; // This object is used to give shaders access to the texture above (SRV = shader resource view)
 
+// This texture will have the scene renderered on it. Then the texture is then used for post-processing
+ID3D11Texture2D*          gSceneTextureCopy = nullptr; // This object represents the memory used by the texture on the GPU
+ID3D11RenderTargetView*   gSceneRenderTargetCopy = nullptr; // This object is used when we want to render to the texture above
+ID3D11ShaderResourceView* gSceneTextureSRVCopy = nullptr; // This object is used to give shaders access to the texture above (SRV = shader resource view)
+
 // Additional textures used for specific post-processes
+ID3D11Resource*			  gStarLensMap = nullptr;
+ID3D11ShaderResourceView* gStarLensMapSRV = nullptr;
 ID3D11Resource*           gNoiseMap = nullptr;
 ID3D11ShaderResourceView* gNoiseMapSRV = nullptr;
 ID3D11Resource*           gBurnMap = nullptr;
@@ -229,6 +239,7 @@ ID3D11ShaderResourceView* nullSRV = nullptr;
 //****************************
 
 // Helper method signatures
+void SaveCurrentSceneToTexture(int index);
 void AddProcessAndMode(PostProcess process, PostProcessMode mode);
 void RemoveProcessAndMode();
 std::array<CVector3, 4> GetWindowPoint(int windowIndex);
@@ -274,6 +285,7 @@ bool InitGeometry()
 		!LoadTexture("CargoA.dds",               &gCrateDiffuseSpecularMap,  &gCrateDiffuseSpecularMapSRV) ||
 		!LoadTexture("Flare.jpg",                &gLightDiffuseMap,          &gLightDiffuseMapSRV) ||
 		!LoadTexture("Noise.png",                &gNoiseMap,   &gNoiseMapSRV) ||
+		!LoadTexture("Flare.jpg",				 &gStarLensMap, &gStarLensMapSRV) ||
 		!LoadTexture("Burn.png",                 &gBurnMap,    &gBurnMapSRV) ||
 		!LoadTexture("Distort.png",              &gDistortMap, &gDistortMapSRV))
 	{
@@ -324,7 +336,8 @@ bool InitGeometry()
 	sceneTextureDesc.Height = gViewportHeight;
 	sceneTextureDesc.MipLevels = 1; // No mip-maps when rendering to textures (or we would have to render every level)
 	sceneTextureDesc.ArraySize = 1;
-	sceneTextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // RGBA texture (8-bits each)
+	//sceneTextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // RGBA texture (8-bits each)
+	sceneTextureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT; // Enables HDR (Comment to disable and uncomment above line)
 	sceneTextureDesc.SampleDesc.Count = 1;
 	sceneTextureDesc.SampleDesc.Quality = 0;
 	sceneTextureDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -344,6 +357,13 @@ bool InitGeometry()
 		return false;
 	}
 
+	// Copy texture
+	if (FAILED(gD3DDevice->CreateTexture2D(&sceneTextureDesc, NULL, &gSceneTextureCopy)))
+	{
+		gLastError = "Error creating scene texture two";
+		return false;
+	}
+
 	// We created the scene texture above, now we get a "view" of it as a render target, i.e. get a special pointer to the texture that
 	// we use when rendering to it (see RenderScene function below)
 	if (FAILED(gD3DDevice->CreateRenderTargetView(gSceneTexture, NULL, &gSceneRenderTarget)))
@@ -354,6 +374,13 @@ bool InitGeometry()
 
 	// Second texture
 	if (FAILED(gD3DDevice->CreateRenderTargetView(gSceneTextureTwo, NULL, &gSceneRenderTargetTwo)))
+	{
+		gLastError = "Error creating scene render target view";
+		return false;
+	}
+
+	// Copy texture
+	if (FAILED(gD3DDevice->CreateRenderTargetView(gSceneTextureCopy, NULL, &gSceneRenderTargetCopy)))
 	{
 		gLastError = "Error creating scene render target view";
 		return false;
@@ -377,6 +404,14 @@ bool InitGeometry()
 		gLastError = "Error creating scene shader resource view";
 		return false;
 	}
+
+	// Copy texture
+	if (FAILED(gD3DDevice->CreateShaderResourceView(gSceneTextureCopy, &srDesc, &gSceneTextureSRVCopy)))
+	{
+		gLastError = "Error creating scene shader resource view";
+		return false;
+	}
+
 
 	return true;
 }
@@ -462,6 +497,9 @@ void ReleaseResources()
 	if (gBurnMap)                      gBurnMap->Release();
 	if (gNoiseMapSRV)                  gNoiseMapSRV->Release();
 	if (gNoiseMap)                     gNoiseMap->Release();
+	if (gStarLensMapSRV)                  gStarLensMapSRV->Release();
+	if (gStarLensMap)                     gStarLensMap->Release();
+
 
 	if (gLightDiffuseMapSRV)           gLightDiffuseMapSRV->Release();
 	if (gLightDiffuseMap)              gLightDiffuseMap->Release();
@@ -610,6 +648,23 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	if (postProcess == PostProcess::Copy)
 	{
 		gD3DContext->PSSetShader(gCopyPostProcess, nullptr, 0);
+	}
+	else if (postProcess == PostProcess::StarLens)
+	{
+		gD3DContext->PSSetShader(gStarLensProcess, nullptr, 0);
+		gPostProcessingConstants.elapsedTime += frameTime;
+
+		//gD3DContext->PSSetShaderResources(1, 1, &gStarLensMapSRV);
+
+	}
+	else if (postProcess == PostProcess::MergeTextures)
+	{
+		gD3DContext->PSSetShader(gMergeTexturesProcess, nullptr, 0);
+		gD3DContext->PSSetShaderResources(1, 1, &gSceneTextureSRVCopy);
+	}
+	else if (postProcess == PostProcess::Bloom)
+	{
+		gD3DContext->PSSetShader(gBloomProcess, nullptr, 0);
 	}
 	else if (postProcess == PostProcess::GameBoy)
 	{
@@ -1011,6 +1066,11 @@ void RenderScene(float frameTime)
 
 			if (gCurrentPostProcessMode == PostProcessMode::Fullscreen)
 			{
+				if (gCurrentPostProcess == PostProcess::Bloom)
+				{
+					SaveCurrentSceneToTexture(processIndex);
+				}
+
 				FullScreenPostProcess(gCurrentPostProcess, frameTime, processIndex++);
 			}
 			else if (gCurrentPostProcessMode == PostProcessMode::Polygon)
@@ -1052,7 +1112,11 @@ void UpdateScene(float frameTime)
 
 	if (KeyHit(Key_1)) { AddProcessAndMode(PostProcess::VerticalColourGradient, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_2)) { AddProcessAndMode(PostProcess::GaussianBlurHorizontal, PostProcessMode::Fullscreen); AddProcessAndMode(PostProcess::GaussianBlurVertical, PostProcessMode::Fullscreen); }
+	if (KeyHit(Key_2)) 
+	{ 
+		AddProcessAndMode(PostProcess::GaussianBlurHorizontal, PostProcessMode::Fullscreen);
+		AddProcessAndMode(PostProcess::GaussianBlurVertical, PostProcessMode::Fullscreen);
+	}
 	
 	if (KeyHit(Key_3)) { AddProcessAndMode(PostProcess::UnderWater, PostProcessMode::Fullscreen); }
 	
@@ -1083,6 +1147,15 @@ void UpdateScene(float frameTime)
 	if (KeyHit(Key_U)) { AddProcessAndMode(PostProcess::Contour, PostProcessMode::Fullscreen); }
 
 	if (KeyHit(Key_I)) { AddProcessAndMode(PostProcess::GameBoy, PostProcessMode::Fullscreen); }
+
+	if (KeyHit(Key_O)) 
+	{ 
+		AddProcessAndMode(PostProcess::Bloom, PostProcessMode::Fullscreen);
+		//AddProcessAndMode(PostProcess::StarLens, PostProcessMode::Fullscreen);
+		AddProcessAndMode(PostProcess::GaussianBlurHorizontal, PostProcessMode::Fullscreen);
+		AddProcessAndMode(PostProcess::GaussianBlurVertical, PostProcessMode::Fullscreen);
+		AddProcessAndMode(PostProcess::MergeTextures, PostProcessMode::Fullscreen);
+	}
 	
 	if (KeyHit(Key_0)) { gPostProcessAndModeStack.clear(); CreateWindowPostProcesses(windowPostProcesses); }
 
@@ -1122,6 +1195,68 @@ void UpdateScene(float frameTime)
 	}
 }
 
+void SaveCurrentSceneToTexture(int index)
+{
+	// Using special vertex shader that creates its own data for a 2D screen quad
+	gD3DContext->VSSetShader(g2DQuadVertexShader, nullptr, 0);
+	gD3DContext->GSSetShader(nullptr, nullptr, 0);  // Switch off geometry shader when not using it (pass nullptr for first parameter)
+
+
+	// States - no blending, don't write to depth buffer and ignore back-face culling
+	gD3DContext->OMSetBlendState(gNoBlendingState, nullptr, 0xffffff);
+	gD3DContext->OMSetDepthStencilState(gDepthReadOnlyState, 0);
+	gD3DContext->RSSetState(gCullNoneState);
+
+
+	// No need to set vertex/index buffer (see 2D quad vertex shader), just indicate that the quad will be created as a triangle strip
+	gD3DContext->IASetInputLayout(NULL); // No vertex data
+	gD3DContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	// These lines unbind the scene texture from the pixel shader to stop DirectX issuing a warning when we try to render to it again next frame
+	gD3DContext->PSSetShaderResources(0, 1, &nullSRV);
+
+	// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
+	gD3DContext->OMSetRenderTargets(1, &gSceneRenderTargetCopy, gDepthStencil); // Where to render
+
+	if (index % 2 == 0)
+	{
+		// Give the pixel shader (post-processing shader) access to the scene texture 
+		// Use the 'first' texture's contents on the 'second' render pass
+		gD3DContext->PSSetShaderResources(0, 1, &gSceneTextureSRV); // Which input (previous in this case)
+	}
+	else
+	{
+		// Give the pixel shader (post-processing shader) access to the scene texture 
+		gD3DContext->PSSetShaderResources(0, 1, &gSceneTextureSRVTwo);
+	}
+
+	gD3DContext->PSSetSamplers(0, 1, &gPointSampler); // Use point sampling (no bilinear, trilinear, mip-mapping etc. for most post-processes)
+
+	// Use the copy ps
+	gD3DContext->PSSetShader(gCopyPostProcess, nullptr, 0);
+
+	// Set 2D area for full-screen post-processing (coordinates in 0->1 range)
+	gPostProcessingConstants.area2DTopLeft = { 0, 0 }; // Top-left of entire screen
+	gPostProcessingConstants.area2DSize = { 1, 1 }; // Full size of screen
+	gPostProcessingConstants.area2DDepth = 0;        // Depth buffer value for full screen is as close as possible
+
+
+	// Pass over the above post-processing settings (also the per-process settings prepared in UpdateScene function below)
+	UpdateConstantBuffer(gPostProcessingConstantBuffer, gPostProcessingConstants);
+	gD3DContext->VSSetConstantBuffers(1, 1, &gPostProcessingConstantBuffer);
+	gD3DContext->PSSetConstantBuffers(1, 1, &gPostProcessingConstantBuffer);
+
+
+	// Draw a quad
+	gD3DContext->Draw(4, 0);
+
+	// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
+	gD3DContext->OMSetRenderTargets(1, &gBackBufferRenderTarget, gDepthStencil);
+
+	// Draw a quad
+	gD3DContext->Draw(4, 0);
+}
+
 void CreateWindowPostProcesses(std::vector<PostProcess> windowPostProcesses)
 {
 	for (PostProcess windowPostProcess : windowPostProcesses)
@@ -1142,6 +1277,13 @@ void RemoveProcessAndMode()
 		// If we're removing a vertical Gaussian blur, we need to remove the horizontal one too since its a 2 pass process
 		if (gCurrentPostProcess == PostProcess::GaussianBlurVertical)
 		{
+			gPostProcessAndModeStack.pop_back();
+			gPostProcessAndModeStack.pop_back();
+		}
+		else if (gCurrentPostProcess == PostProcess::MergeTextures)
+		{
+			gPostProcessAndModeStack.pop_back();
+			gPostProcessAndModeStack.pop_back(); 
 			gPostProcessAndModeStack.pop_back();
 			gPostProcessAndModeStack.pop_back();
 		}

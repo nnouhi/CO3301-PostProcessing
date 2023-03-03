@@ -157,5 +157,14 @@
     <FxCompile Include="GameBoy_pp.hlsl">
       <Filter>Post-Processing Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="Bloom_pp.hlsl">
+      <Filter>Post-Processing Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="MergeTextures_pp.hlsl">
+      <Filter>Post-Processing Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="StarLens_pp.hlsl">
+      <Filter>Post-Processing Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

@@ -42,6 +42,9 @@ extern ID3D11PixelShader* gSepiaProcess;
 extern ID3D11PixelShader* gInvertedProcess;
 extern ID3D11PixelShader* gContourProcess;
 extern ID3D11PixelShader* gGameBoyProcess;
+extern ID3D11PixelShader* gBloomProcess;
+extern ID3D11PixelShader* gMergeTexturesProcess;
+extern ID3D11PixelShader* gStarLensProcess;
 
 
 

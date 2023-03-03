@@ -34,6 +34,8 @@ float4 main(PostProcessingInput input) : SV_Target
     
     const int pixelWidth = 7;
     const int pixelHeight = 4;
+    
+    // Calcualte new pixel width and height in texure coord system
     const float newTexelWidth = pixelWidth * (1.0f / gViewportWidth);
     const float newTexelHeight = pixelHeight * (1.0f / gViewportHeight);
     const float2 newCoord = float2(floor(input.sceneUV.x / newTexelWidth + 0.5f) * newTexelWidth, floor(input.sceneUV.y / newTexelHeight + 0.5f) * newTexelHeight);

@@ -10,6 +10,9 @@
       <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\2DPolygon_pp.cso</FullPath>
     </ContentFile>
     <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Bloom_pp.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
       <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Burn_pp.cso</FullPath>
     </ContentFile>
     <ContentFile>
@@ -46,6 +49,9 @@
       <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Inverted_pp.cso</FullPath>
     </ContentFile>
     <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\MergeTextures_pp.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
       <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\NightVision_pp.cso</FullPath>
     </ContentFile>
     <ContentFile>
@@ -53,6 +59,9 @@
     </ContentFile>
     <ContentFile>
       <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Spiral_pp.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\StarLens_pp.cso</FullPath>
     </ContentFile>
     <ContentFile>
       <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\TintedTexture_ps.cso</FullPath>

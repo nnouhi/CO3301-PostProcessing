@@ -44,6 +44,9 @@ ID3D11PixelShader* gSepiaProcess = nullptr;
 ID3D11PixelShader* gInvertedProcess = nullptr;
 ID3D11PixelShader* gContourProcess = nullptr;
 ID3D11PixelShader* gGameBoyProcess = nullptr;
+ID3D11PixelShader* gBloomProcess = nullptr;
+ID3D11PixelShader* gMergeTexturesProcess = nullptr;
+ID3D11PixelShader* gStarLensProcess = nullptr;
 
 
 
@@ -85,6 +88,9 @@ bool LoadShaders()
 	gInvertedProcess = LoadPixelShader("Inverted_pp");
 	gContourProcess = LoadPixelShader("Contour_pp");
 	gGameBoyProcess = LoadPixelShader("GameBoy_pp");
+	gBloomProcess = LoadPixelShader("Bloom_pp");
+	gMergeTexturesProcess = LoadPixelShader("MergeTextures_pp");
+	gStarLensProcess = LoadPixelShader("StarLens_pp");
 
 	if (gBasicTransformVertexShader == nullptr || gPixelLightingVertexShader     == nullptr   ||
 		gTintedTexturePixelShader   == nullptr || gPixelLightingPixelShader      == nullptr   ||
@@ -97,7 +103,8 @@ bool LoadShaders()
 		gUnderWaterProcess == nullptr          || gHueVerticalColourGradientProcess == nullptr||
 		gNightVisionProcess == nullptr         || gSepiaProcess == nullptr					  ||
 		gInvertedProcess == nullptr			   || gContourProcess == nullptr				  ||
-		gGameBoyProcess == nullptr)
+		gGameBoyProcess == nullptr			   || gBloomProcess == nullptr					  ||
+		gMergeTexturesProcess == nullptr	   || gStarLensProcess == nullptr)
 	{
 		gLastError = "Error loading shaders";
 		return false;
@@ -109,6 +116,9 @@ bool LoadShaders()
 
 void ReleaseShaders()
 {
+	if (gStarLensProcess)  gStarLensProcess->Release();
+	if (gMergeTexturesProcess)  gMergeTexturesProcess->Release();
+	if (gBloomProcess)  gBloomProcess->Release();
 	if (gGameBoyProcess)  gGameBoyProcess->Release();
 	if (gContourProcess)  gContourProcess->Release();
 	if (gInvertedProcess)  gInvertedProcess->Release();
