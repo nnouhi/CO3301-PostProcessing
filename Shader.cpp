@@ -19,7 +19,8 @@
 ID3D11VertexShader*   gBasicTransformVertexShader = nullptr;
 ID3D11VertexShader*   gPixelLightingVertexShader  = nullptr;
 ID3D11PixelShader*    gTintedTexturePixelShader   = nullptr;
-ID3D11PixelShader*    gPixelLightingPixelShader   = nullptr;
+ID3D11PixelShader* gPixelLightingPixelShader = nullptr;
+ID3D11PixelShader* gPixelDepthPixelShader = nullptr;
 
 
 //*******************************
@@ -46,8 +47,9 @@ ID3D11PixelShader* gContourProcess = nullptr;
 ID3D11PixelShader* gGameBoyProcess = nullptr;
 ID3D11PixelShader* gBloomProcess = nullptr;
 ID3D11PixelShader* gMergeTexturesProcess = nullptr;
-ID3D11PixelShader* gStarLensProcess = nullptr;
+ID3D11PixelShader* gDilationProcess = nullptr;
 ID3D11PixelShader* gDualFilteringProcess = nullptr;
+ID3D11PixelShader* gDepthOfFieldProcess = nullptr;
 
 
 
@@ -65,7 +67,8 @@ bool LoadShaders()
 	gBasicTransformVertexShader   = LoadVertexShader  ("BasicTransform_vs"  );
 	gPixelLightingVertexShader    = LoadVertexShader  ("PixelLighting_vs"   );
 	gTintedTexturePixelShader     = LoadPixelShader   ("TintedTexture_ps"   );
-	gPixelLightingPixelShader     = LoadPixelShader   ("PixelLighting_ps"   );
+	gPixelLightingPixelShader	  = LoadPixelShader("PixelLighting_ps");
+	gPixelDepthPixelShader     = LoadPixelShader   ("PixelDepth_ps");
 
 	//***************************************
 	//**** Post processing shaders
@@ -91,8 +94,9 @@ bool LoadShaders()
 	gGameBoyProcess = LoadPixelShader("GameBoy_pp");
 	gBloomProcess = LoadPixelShader("Bloom_pp");
 	gMergeTexturesProcess = LoadPixelShader("MergeTextures_pp");
-	gStarLensProcess = LoadPixelShader("StarLens_pp");
+	gDilationProcess = LoadPixelShader("Dilation_pp");
 	gDualFilteringProcess = LoadPixelShader("DualFiltering_pp");
+	gDepthOfFieldProcess = LoadPixelShader("DepthOfField_pp");
 
 	if (gBasicTransformVertexShader == nullptr || gPixelLightingVertexShader     == nullptr   ||
 		gTintedTexturePixelShader   == nullptr || gPixelLightingPixelShader      == nullptr   ||
@@ -106,8 +110,9 @@ bool LoadShaders()
 		gNightVisionProcess == nullptr         || gSepiaProcess == nullptr					  ||
 		gInvertedProcess == nullptr			   || gContourProcess == nullptr				  ||
 		gGameBoyProcess == nullptr			   || gBloomProcess == nullptr					  ||
-		gMergeTexturesProcess == nullptr	   || gStarLensProcess == nullptr				  ||
-		gDualFilteringProcess == nullptr)
+		gMergeTexturesProcess == nullptr	   || gDilationProcess == nullptr				  ||
+		gDualFilteringProcess == nullptr       || gPixelDepthPixelShader == nullptr			  ||
+		gDepthOfFieldProcess == nullptr)
 	{
 		gLastError = "Error loading shaders";
 		return false;
@@ -119,8 +124,10 @@ bool LoadShaders()
 
 void ReleaseShaders()
 {
+	if (gDepthOfFieldProcess)  gDepthOfFieldProcess->Release();
+	if (gPixelDepthPixelShader)  gPixelDepthPixelShader->Release();
 	if (gDualFilteringProcess)  gDualFilteringProcess->Release();
-	if (gStarLensProcess)  gStarLensProcess->Release();
+	if (gDilationProcess)  gDilationProcess->Release();
 	if (gMergeTexturesProcess)  gMergeTexturesProcess->Release();
 	if (gBloomProcess)  gBloomProcess->Release();
 	if (gGameBoyProcess)  gGameBoyProcess->Release();

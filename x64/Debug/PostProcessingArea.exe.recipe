@@ -22,6 +22,9 @@
       <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Copy_pp.cso</FullPath>
     </ContentFile>
     <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\DepthOfField_pp.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
       <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Distort_pp.cso</FullPath>
     </ContentFile>
     <ContentFile>
@@ -58,13 +61,16 @@
       <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\NightVision_pp.cso</FullPath>
     </ContentFile>
     <ContentFile>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\PixelDepth_ps.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
       <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Sepia_pp.cso</FullPath>
     </ContentFile>
     <ContentFile>
       <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Spiral_pp.cso</FullPath>
     </ContentFile>
     <ContentFile>
-      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\StarLens_pp.cso</FullPath>
+      <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\Dilation_pp.cso</FullPath>
     </ContentFile>
     <ContentFile>
       <FullPath>D:\Year 4 Computing\Mathematics and Technologies for Games\Assignment\CO3301-PostProcessing\TintedTexture_ps.cso</FullPath>

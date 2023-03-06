@@ -23,7 +23,7 @@ SamplerState PointSample : register(s0); // We don't usually want to filter (bil
 //--------------------------------------------------------------------------------------
 
 float3 Rgb2Gray(float3 colour);
-float3 Gray2Ggb(float3 gray, float offset);
+float3 Gray2Rgb(float3 gray, float offset);
 
 // Post-processing shader that tints the scene texture to a given colour
 float4 main(PostProcessingInput input) : SV_Target
@@ -44,7 +44,7 @@ float4 main(PostProcessingInput input) : SV_Target
     float3 colour = SceneTexture.Sample(PointSample, newCoord).rgb;
 	
 	// Got the RGB from the scene texture, set alpha to 1 for final output
-    return float4(Gray2Ggb(Rgb2Gray(colour), offset), 1.0f);
+    return float4(Gray2Rgb(Rgb2Gray(colour), offset), 1.0f);
 }
 
 // Convert RGB color to grayscale
@@ -56,7 +56,7 @@ float3 Rgb2Gray(float3 colour)
 }
 
 // Convert grayscale value to RGB color
-float3 Gray2Ggb(float3 gray, float offset)
+float3 Gray2Rgb(float3 gray, float offset)
 {
     const float3 colour1 = float3(0.505f, 0.529f, 0.407f);
     const float3 colour2 = float3(0.294f, 0.313f, 0.247f);

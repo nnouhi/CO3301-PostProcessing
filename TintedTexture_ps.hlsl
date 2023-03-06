@@ -29,7 +29,6 @@ float4 main(SimplePixelShaderInput input) : SV_Target
     // Sample diffuse material colour for this pixel from a texture using a given sampler that you set up in the C++ code
     // Ignoring any alpha in the texture, just reading RGB
     float3 diffuseMapColour = DiffuseMap.Sample(TexSampler, input.uv).rgb;
-
     // Blend texture colour with fixed per-object colour
     float3 finalColour = gObjectColour * diffuseMapColour;
 

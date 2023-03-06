@@ -163,11 +163,17 @@
     <FxCompile Include="MergeTextures_pp.hlsl">
       <Filter>Post-Processing Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="StarLens_pp.hlsl">
+    <FxCompile Include="Dilation_pp.hlsl">
       <Filter>Post-Processing Shaders</Filter>
     </FxCompile>
     <FxCompile Include="DualFiltering_pp.hlsl">
       <Filter>Post-Processing Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="DepthOfField_pp.hlsl">
+      <Filter>Post-Processing Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="PixelDepth_ps.hlsl">
+      <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>
