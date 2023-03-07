@@ -52,6 +52,7 @@ enum class PostProcess
 	Dilation,
 	DualFiltering,
 	DepthOfField,
+	KawaseLightStreak,
 
 	Copy,
 	Tint,
@@ -110,12 +111,14 @@ Mesh* gCubeMesh;
 Mesh* gCrateMesh;
 Mesh* gLightMesh;
 Mesh* gWallMesh;
+Mesh* gSecondWallMesh;
 
 Model* gStars;
 Model* gGround;
 Model* gCube;
 Model* gCrate;
 Model* gWall;
+Model* gSecondWall;
 
 Camera* gCamera;
 
@@ -178,6 +181,8 @@ ID3D11Resource*           gCubeDiffuseSpecularMap = nullptr;
 ID3D11ShaderResourceView* gCubeDiffuseSpecularMapSRV = nullptr;
 ID3D11Resource*			  gWallDifuseSpecularMap = nullptr;
 ID3D11ShaderResourceView* gWallDifuseSpecularMapSRV = nullptr;
+ID3D11Resource*			  gSecondWallDifuseSpecularMap = nullptr;
+ID3D11ShaderResourceView* gSecondWallDifuseSpecularMapSRV = nullptr;
 
 ID3D11Resource*           gLightDiffuseMap = nullptr;
 ID3D11ShaderResourceView* gLightDiffuseMapSRV = nullptr;
@@ -290,7 +295,8 @@ bool InitGeometry()
 		gCubeMesh   = new Mesh("Cube.x");
 		gCrateMesh  = new Mesh("CargoContainer.x");
 		gLightMesh = new Mesh("Light.x");
-		gWallMesh  = new Mesh("Wall2.x");
+		gWallMesh = new Mesh("Wall2.x");
+		gSecondWallMesh  = new Mesh("Wall1.x");
 	}
 	catch (std::runtime_error e)  // Constructors cannot return error messages so use exceptions to catch mesh errors (fairly standard approach this)
 	{
@@ -308,7 +314,8 @@ bool InitGeometry()
 	if (!LoadTexture("Stars.jpg",                &gStarsDiffuseSpecularMap,  &gStarsDiffuseSpecularMapSRV) ||
 		!LoadTexture("GrassDiffuseSpecular.dds", &gGroundDiffuseSpecularMap, &gGroundDiffuseSpecularMapSRV) ||
 		!LoadTexture("StoneDiffuseSpecular.dds", &gCubeDiffuseSpecularMap, &gCubeDiffuseSpecularMapSRV) ||
-		!LoadTexture("brick_35.jpg", &gWallDifuseSpecularMap,   &gWallDifuseSpecularMapSRV) ||
+		!LoadTexture("brick_35.jpg", &gWallDifuseSpecularMap, &gWallDifuseSpecularMapSRV) ||
+		!LoadTexture("brick_35.jpg", &gSecondWallDifuseSpecularMap,   &gSecondWallDifuseSpecularMapSRV) ||
 		!LoadTexture("CargoA.dds",               &gCrateDiffuseSpecularMap,  &gCrateDiffuseSpecularMapSRV) ||
 		!LoadTexture("Flare.jpg",                &gLightDiffuseMap,          &gLightDiffuseMapSRV) ||
 		!LoadTexture("Noise.png",                &gNoiseMap,   &gNoiseMapSRV) ||
@@ -503,7 +510,8 @@ bool InitScene()
 	gGround = new Model(gGroundMesh);
 	gCube   = new Model(gCubeMesh);
 	gCrate  = new Model(gCrateMesh);
-	gWall	= new Model(gWallMesh);
+	gWall = new Model(gWallMesh);
+	gSecondWall	= new Model(gSecondWallMesh);
 
 	// Initial positions
 	gCube->SetPosition({ 42, 5, -10 });
@@ -516,6 +524,9 @@ bool InitScene()
 	gWall->SetPosition({ 50, 0, -50 });
 	gWall->SetRotation({ 0.0f, ToRadians(-180.0f), 0.0f });
 	gWall->SetScale(50.0f);
+	gSecondWall->SetPosition({ 168, 0, -50 });;
+	gSecondWall->SetRotation({ 0.0f, ToRadians(-180.0f), 0.0f });
+	gSecondWall->SetScale(50.0f);
 
 
 	// Light set-up - using an array this time
@@ -540,12 +551,15 @@ bool InitScene()
 	gCamera = new Camera();
 	gCamera->SetPosition({ 125, 20, 75 });
 	gCamera->SetRotation({ ToRadians(10.0f), ToRadians(270.0f), 0.0f });
+	gCamera->SetNearClip(1.0f);
+	gCamera->SetFarClip(20000.0f);
 
 	// Create post processes for windows
 	windowPostProcesses.push_back(PostProcess::NightVision);
 	windowPostProcesses.push_back(PostProcess::Contour);
 	windowPostProcesses.push_back(PostProcess::Sepia);
 	windowPostProcesses.push_back(PostProcess::Inverted);
+	windowPostProcesses.push_back(PostProcess::GameBoy);
 	
 	CreateWindowPostProcesses(windowPostProcesses);
 
@@ -588,6 +602,8 @@ void ReleaseResources()
 	if (gCubeDiffuseSpecularMap)       gCubeDiffuseSpecularMap->Release();
 	if (gWallDifuseSpecularMapSRV)       gWallDifuseSpecularMapSRV->Release();
 	if (gWallDifuseSpecularMap)    gWallDifuseSpecularMap->Release();
+	if (gSecondWallDifuseSpecularMapSRV)       gSecondWallDifuseSpecularMapSRV->Release();
+	if (gSecondWallDifuseSpecularMap)    gSecondWallDifuseSpecularMap->Release();
 	if (gGroundDiffuseSpecularMapSRV)  gGroundDiffuseSpecularMapSRV->Release();
 	if (gGroundDiffuseSpecularMap)     gGroundDiffuseSpecularMap->Release();
 	if (gStarsDiffuseSpecularMapSRV)   gStarsDiffuseSpecularMapSRV->Release();
@@ -610,11 +626,12 @@ void ReleaseResources()
 	delete gGround;  gGround = nullptr;
 	delete gStars;   gStars = nullptr;
 	delete gWall;	 gWall = nullptr;
+	delete gSecondWall;	 gSecondWall = nullptr;
 
 	delete gLightMesh;   gLightMesh = nullptr;
 	delete gCrateMesh;   gCrateMesh = nullptr;
 	delete gCubeMesh;    gCubeMesh = nullptr;
-	delete gWallMesh;    gWallMesh = nullptr;
+	delete gSecondWallMesh;    gSecondWallMesh = nullptr;
 	delete gGroundMesh;  gGroundMesh = nullptr;
 	delete gStarsMesh;   gStarsMesh = nullptr;
 }
@@ -628,17 +645,17 @@ void ReleaseResources()
 void RenderDepthBufferFromCamera(Camera* camera)
 {
 	// Set camera matrices in the constant buffer and send over to GPU
-	/*gPerFrameConstants.cameraMatrix = camera->WorldMatrix();
+	gPerFrameConstants.cameraMatrix = camera->WorldMatrix();
 	gPerFrameConstants.viewMatrix = camera->ViewMatrix();
 	gPerFrameConstants.projectionMatrix = camera->ProjectionMatrix();
 	gPerFrameConstants.viewProjectionMatrix = camera->ViewProjectionMatrix();
-	UpdateConstantBuffer(gPerFrameConstantBuffer, gPerFrameConstants);*/
+	UpdateConstantBuffer(gPerFrameConstantBuffer, gPerFrameConstants);
 
 	// Get camera-like matrices from the spotlight, seet in the constant buffer and send over to GPU
-	gPerFrameConstants.viewMatrix = CalculateLightViewMatrix(0);
+	/*gPerFrameConstants.viewMatrix = CalculateLightViewMatrix(0);
 	gPerFrameConstants.projectionMatrix = CalculateLightProjectionMatrix(0);
 	gPerFrameConstants.viewProjectionMatrix = gPerFrameConstants.viewMatrix * gPerFrameConstants.projectionMatrix;
-	UpdateConstantBuffer(gPerFrameConstantBuffer, gPerFrameConstants);
+	UpdateConstantBuffer(gPerFrameConstantBuffer, gPerFrameConstants);*/
 
 
 	// Indicate that the constant buffer we just updated is for use in the vertex shader (VS), geometry shader (GS) and pixel shader (PS)
@@ -658,6 +675,7 @@ void RenderDepthBufferFromCamera(Camera* camera)
 	gCrate->Render();
 	gCube->Render();
 	gWall->Render();
+	gSecondWall->Render();
 	gStars->Render();
 
 	for (int i = 0; i < NUM_LIGHTS; ++i)
@@ -710,6 +728,9 @@ void RenderSceneFromCamera(Camera* camera)
 
 	gD3DContext->PSSetShaderResources(0, 1, &gWallDifuseSpecularMapSRV); // First parameter must match texture slot number in the shader
 	gWall->Render();
+
+	gD3DContext->PSSetShaderResources(0, 1, &gSecondWallDifuseSpecularMapSRV); // First parameter must match texture slot number in the shader
+	gSecondWall->Render();
 
 
 	////--------------- Render sky ---------------////
@@ -771,8 +792,10 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	}
 	else if (postProcess == PostProcess::DepthOfField)
 	{
+		gPostProcessingConstants.distanceToFocusedObject = Distance(gCamera->Position(), gCube->Position());
 		gD3DContext->PSSetShader(gDepthOfFieldProcess, nullptr, 0);
-		gD3DContext->PSSetShaderResources(1, 1, &gShadowMap1SRV);
+		gD3DContext->PSSetShaderResources(1, 1, &gSceneTextureSRVCopy);
+		gD3DContext->PSSetShaderResources(2, 1, &gShadowMap1SRV);
 	}
 	else if (postProcess == PostProcess::DualFiltering)
 	{
@@ -789,10 +812,17 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 		gD3DContext->PSSetShader(gMergeTexturesProcess, nullptr, 0);
 		gD3DContext->PSSetShaderResources(1, 1, &gSceneTextureSRVCopy);
 	}
+	else if (postProcess == PostProcess::KawaseLightStreak)
+	{
+		gPostProcessingConstants.kawaseIter = gPostProcessingConstants.kawaseIter + 1;
+		gD3DContext->PSSetShader(gKawaseLighStreakProcess, nullptr, 0);
+		gD3DContext->PSSetShaderResources(1, 1, &gSceneTextureSRVCopy);
+	}
 	else if (postProcess == PostProcess::Bloom)
 	{
 		gD3DContext->PSSetShader(gBloomProcess, nullptr, 0);
 		gPostProcessingConstants.dualFilterIteration = 0;
+		gPostProcessingConstants.kawaseIter = -1;
 	}
 	else if (postProcess == PostProcess::GameBoy)
 	{
@@ -908,9 +938,6 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	else if (postProcess == PostProcess::Tint)
 	{
 		gD3DContext->PSSetShader(gTintPostProcess, nullptr, 0);
-
-		// Colour for tint shader
-		gPostProcessingConstants.tintColour = { 1.0f, 0.0f, 0.0f };
 	}
 }
 
@@ -1211,7 +1238,7 @@ void RenderScene(float frameTime)
 
 			if (gCurrentPostProcessMode == PostProcessMode::Fullscreen)
 			{
-				if (gCurrentPostProcess == PostProcess::Bloom)
+				if (gCurrentPostProcess == PostProcess::Bloom || gCurrentPostProcess == PostProcess::DepthOfField)
 				{
 					SaveCurrentSceneToTexture(processIndex);
 				}
@@ -1237,9 +1264,9 @@ void RenderScene(float frameTime)
 
 	//*****************************//
 	// Temporary demonstration code for visualising the light's view of the scene
-	ColourRGBA white = {1,1,1};
+	/*ColourRGBA white = {1,1,1};
 	gD3DContext->ClearRenderTargetView(gBackBufferRenderTarget, &white.r);
-	RenderDepthBufferFromCamera(gCamera);
+	RenderDepthBufferFromCamera(gCamera);*/
 	//*****************************//
 	
 	// When drawing to the off-screen back buffer is complete, we "present" the image to the front buffer (the screen)
@@ -1273,7 +1300,10 @@ void UpdateScene(float frameTime)
 	
 	if (KeyHit(Key_3)) { AddProcessAndMode(PostProcess::UnderWater, PostProcessMode::Fullscreen); }
 	
-	if (KeyHit(Key_4)) { AddProcessAndMode(PostProcess::DepthOfField, PostProcessMode::Fullscreen); }
+	if (KeyHit(Key_4)) 
+	{ 
+		AddProcessAndMode(PostProcess::DepthOfField, PostProcessMode::Fullscreen);
+	}
 	
 	if (KeyHit(Key_5)) { AddProcessAndMode(PostProcess::Distort, PostProcessMode::Fullscreen); }
 	
@@ -1304,18 +1334,14 @@ void UpdateScene(float frameTime)
 	if (KeyHit(Key_O)) 
 	{ 
 		AddProcessAndMode(PostProcess::Bloom, PostProcessMode::Fullscreen);
-		//AddProcessAndMode(PostProcess::Dilation, PostProcessMode::Fullscreen);
-		int numOfDualFilterings = 8;
-		for (int i = 0; i < numOfDualFilterings; i++)
-		{
-			AddProcessAndMode(PostProcess::DualFiltering, PostProcessMode::Fullscreen);	
-		}
-		AddProcessAndMode(PostProcess::MergeTextures, PostProcessMode::Fullscreen);
 
-
-		////AddProcessAndMode(PostProcess::StarLens, PostProcessMode::Fullscreen);
-		//AddProcessAndMode(PostProcess::GaussianBlurHorizontal, PostProcessMode::Fullscreen);
-		//AddProcessAndMode(PostProcess::GaussianBlurVertical, PostProcessMode::Fullscreen);
+		// 5 streaks
+		AddProcessAndMode(PostProcess::KawaseLightStreak, PostProcessMode::Fullscreen);
+		AddProcessAndMode(PostProcess::KawaseLightStreak, PostProcessMode::Fullscreen);
+		AddProcessAndMode(PostProcess::KawaseLightStreak, PostProcessMode::Fullscreen);
+		AddProcessAndMode(PostProcess::KawaseLightStreak, PostProcessMode::Fullscreen);
+		AddProcessAndMode(PostProcess::KawaseLightStreak, PostProcessMode::Fullscreen);
+		AddProcessAndMode(PostProcess::KawaseLightStreak, PostProcessMode::Fullscreen);
 	}
 
 	if (KeyHit(Key_P)) { AddProcessAndMode(PostProcess::Burn, PostProcessMode::Fullscreen); }
@@ -1470,7 +1496,9 @@ std::array<CVector3, 4> GetWindowPoint(int windowIndex)
 		case 2:
 			return{{ { 50, 25, -50 }, { 50, 5,-50 }, { 63, 25, -50 }, { 63, 5, -50 } }};
 		case 3:
-			return{{  {64, 25, -50 }, { 64, 5, -50 }, { 78 ,25, -50 }, { 78, 5, -50 } }};
+			return{{ { 64, 25, -50 }, { 64, 5, -50 }, { 78 ,25, -50 }, { 78, 5, -50 } }};
+		case 4:
+			return{{ { 160, 25, -50 }, { 160, 5, -50 }, { 176 ,25, -50 }, { 176, 5, -50 } }};
 	}
 
 	return std::array<CVector3, 4>();

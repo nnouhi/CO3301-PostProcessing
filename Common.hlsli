@@ -131,8 +131,8 @@ cbuffer PostProcessingConstants : register(b1)
 
     
 	// Tint post-process settings
-	float3 gTintColour;
-	float  paddingB;
+    int gKawaseIter;
+    float3 paddingb;
 
 	// Grey noise post-process settings
     float2 gNoiseScale;
@@ -175,8 +175,9 @@ cbuffer PostProcessingConstants : register(b1)
     
     float gDualFilterIteration;
     float3 paddingL;
-    
-    
+
+    float gDistanceToFocusedObject;
+    float3 paddingM;
 }
 
 //**************************

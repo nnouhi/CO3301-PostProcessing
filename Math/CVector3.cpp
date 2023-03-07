@@ -129,3 +129,16 @@ float Length(const CVector3& v)
 {
     return sqrt(Dot(v, v));
 }
+
+// Return distance from one point to another - non-member version
+float Distance
+(
+    const CVector3& p1,
+    const CVector3& p2
+)
+{
+    float distX = p1.x - p2.x;
+    float distY = p1.y - p2.y;
+    float distZ = p1.z - p2.z;
+    return sqrt(distX * distX + distY * distY + distZ * distZ);
+}

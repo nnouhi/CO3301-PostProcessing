@@ -48,6 +48,7 @@ extern ID3D11PixelShader* gMergeTexturesProcess;
 extern ID3D11PixelShader* gDilationProcess;
 extern ID3D11PixelShader* gDualFilteringProcess;
 extern ID3D11PixelShader* gDepthOfFieldProcess;
+extern ID3D11PixelShader* gKawaseLighStreakProcess;
 
 
 

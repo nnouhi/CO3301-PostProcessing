@@ -119,8 +119,8 @@ struct PostProcessingConstants
 	CVector4 polygon2DPoints[4]; // Four points of a polygon in 2D viewport space for polygon post-processing. Matrix transformations already done on C++ side
 
 	// Tint post-process settings
-	CVector3 tintColour;
-	float    paddingB;
+	int kawaseIter;
+	CVector3 paddingB;
 
 	// Grey noise post-process settings
     CVector2 noiseScale;
@@ -163,6 +163,9 @@ struct PostProcessingConstants
 
 	float dualFilterIteration;
 	CVector3 paddingL;
+
+	float distanceToFocusedObject;
+	CVector3 paddingM;
 };
 extern PostProcessingConstants gPostProcessingConstants;      // This variable holds the CPU-side constant buffer described above
 extern ID3D11Buffer*           gPostProcessingConstantBuffer; // This variable controls the GPU-side constant buffer related to the above structure

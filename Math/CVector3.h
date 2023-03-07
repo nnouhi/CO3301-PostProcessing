@@ -98,5 +98,8 @@ CVector3 Normalise(const CVector3& v);
 // Returns length of a vector
 float Length(const CVector3& v);
 
+// Return distance from one point to another - non-member version
+float Distance(const CVector3& p1, const CVector3& p2);
+
 
 #endif // _CVECTOR3_H_DEFINED_

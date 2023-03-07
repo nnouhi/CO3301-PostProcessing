@@ -50,6 +50,8 @@ ID3D11PixelShader* gMergeTexturesProcess = nullptr;
 ID3D11PixelShader* gDilationProcess = nullptr;
 ID3D11PixelShader* gDualFilteringProcess = nullptr;
 ID3D11PixelShader* gDepthOfFieldProcess = nullptr;
+ID3D11PixelShader* gKawaseLighStreakProcess = nullptr;
+
 
 
 
@@ -97,6 +99,7 @@ bool LoadShaders()
 	gDilationProcess = LoadPixelShader("Dilation_pp");
 	gDualFilteringProcess = LoadPixelShader("DualFiltering_pp");
 	gDepthOfFieldProcess = LoadPixelShader("DepthOfField_pp");
+	gKawaseLighStreakProcess = LoadPixelShader("KawaseLightStreak_pp");
 
 	if (gBasicTransformVertexShader == nullptr || gPixelLightingVertexShader     == nullptr   ||
 		gTintedTexturePixelShader   == nullptr || gPixelLightingPixelShader      == nullptr   ||
@@ -112,7 +115,7 @@ bool LoadShaders()
 		gGameBoyProcess == nullptr			   || gBloomProcess == nullptr					  ||
 		gMergeTexturesProcess == nullptr	   || gDilationProcess == nullptr				  ||
 		gDualFilteringProcess == nullptr       || gPixelDepthPixelShader == nullptr			  ||
-		gDepthOfFieldProcess == nullptr)
+		gDepthOfFieldProcess == nullptr        || gKawaseLighStreakProcess == nullptr)
 	{
 		gLastError = "Error loading shaders";
 		return false;
@@ -124,6 +127,7 @@ bool LoadShaders()
 
 void ReleaseShaders()
 {
+	if (gKawaseLighStreakProcess)  gKawaseLighStreakProcess->Release();
 	if (gDepthOfFieldProcess)  gDepthOfFieldProcess->Release();
 	if (gPixelDepthPixelShader)  gPixelDepthPixelShader->Release();
 	if (gDualFilteringProcess)  gDualFilteringProcess->Release();

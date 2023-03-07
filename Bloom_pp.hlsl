@@ -15,35 +15,48 @@ Texture2D SceneTexture : register(t0);
 SamplerState PointSample : register(s0); // We don't usually want to filter (bilinear, trilinear etc.) the scene texture when
                                           // post-processing so this sampler will use "point sampling" - no filtering
 
-// Algorithm found at: https://pingpoli.medium.com/the-bloom-post-processing-effect-9352fa800caf
-// and https://learnopengl.com/Advanced-Lighting/Bloom , https://learnopengl.com/Advanced-Lighting/HDR
-
+// Algorithm found at: https://www.shadertoy.com/view/WdSGRR
 
 //--------------------------------------------------------------------------------------
 // Shader code
 //--------------------------------------------------------------------------------------
 
-float Rgb2Gray(float3 colour);
-
-
-// In your pixel shader:
-
-float4 main(PostProcessingInput input) : SV_Target
+float3 gammaCorrect(float3 color, float gamma)
 {
-    const float brightnessThreshHold = 0.5f;
-    float3 colour = SceneTexture.Sample(PointSample, input.sceneUV).rgb;
-    float colourBrightness = Rgb2Gray(colour);
-    
-    if (colourBrightness > brightnessThreshHold)
-    {
-        return float4(colour, 1.0f);
-    }
-    
-    return float4(0.0f, 0.0f, 0.0f, 1.0f);
+    return pow(color, float3(1.0 / gamma, 1.0 / gamma, 1.0 / gamma));
 }
 
-// Convert RGB color to grayscale
-float Rgb2Gray(float3 colour)
+float3 levelRange(float3 color, float minInput, float maxInput)
 {
-    return dot(colour, float3(0.2126f, 0.7152f, 0.0722f));
+    return min(max(color - float3(minInput, minInput, minInput), float3(0.0, 0.0, 0.0)) / (float3(maxInput, maxInput, maxInput) - float3(minInput, minInput, minInput)), float3(1.0, 1.0f, 1.0f));
+}
+
+float3 finalLevels(float3 color, float minInput, float gamma, float maxInput)
+{
+    return gammaCorrect(levelRange(color, minInput, maxInput), gamma);
+}
+
+float luma(float3 color)
+{
+    return dot(color, float3(0.299, 0.587, 0.114));
+}
+
+float luma(float4 color)
+{
+    return dot(color.rgb, float3(0.299, 0.587, 0.114));
+}
+
+// This shader does some thresholding and edge detection to find highlights.
+float4 main(PostProcessingInput input) : SV_Target
+{
+	
+    
+    float4 t = SceneTexture.Sample(PointSample, input.sceneUV);
+    float4 tCol = t;
+    float l = luma(t.rgb);
+    float3 soft = finalLevels(float3(l, l, l), 0.0, 2.8, 183.0 / 255.0);
+    t.rgb = smoothstep(0.56, 0.63, float3(l, l, l));
+    t.rgb -= 0.9997;
+    
+    return saturate(float4(t.rgb, t.r));
 }
