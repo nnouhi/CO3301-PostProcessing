@@ -132,7 +132,7 @@ cbuffer PostProcessingConstants : register(b1)
     
 	// Tint post-process settings
     int gKawaseIter;
-    float3 paddingb;
+    float3 paddingB;
 
 	// Grey noise post-process settings
     float2 gNoiseScale;
@@ -142,9 +142,9 @@ cbuffer PostProcessingConstants : register(b1)
 	float  gBurnHeight;
 	float3 paddingC;
 
-	// Distort post-process settings
-	float  gDistortLevel;
-	float3 paddingD;
+	// DOF post-process settings
+    float gDistanceToFocusedObject;
+    float3 paddingD;
 
     // Gaussian Blur post-process settings
     float gBlurAmount;
@@ -173,11 +173,10 @@ cbuffer PostProcessingConstants : register(b1)
     float3 gBottomColour;
     float paddingK;
     
+    // Dualfiltering post-process settings
     float gDualFilterIteration;
     float3 paddingL;
-
-    float gDistanceToFocusedObject;
-    float3 paddingM;
+    
 }
 
 //**************************

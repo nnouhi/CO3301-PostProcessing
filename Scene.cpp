@@ -53,6 +53,7 @@ enum class PostProcess
 	DualFiltering,
 	DepthOfField,
 	KawaseLightStreak,
+	MotionBlur,
 
 	Copy,
 	Tint,
@@ -75,6 +76,7 @@ auto gCurrentPostProcessMode = PostProcessMode::Fullscreen;
 std::vector<std::pair<PostProcess, PostProcessMode>> gPostProcessAndModeStack;
 std::vector<PostProcess> windowPostProcesses;
 const int NUM_OF_WINDOWS = 4;
+bool isOtherFrame = false;
 //********************
 
 
@@ -235,9 +237,15 @@ ID3D11RenderTargetView*   gSceneRenderTargetTwo = nullptr; // This object is use
 ID3D11ShaderResourceView* gSceneTextureSRVTwo = nullptr; // This object is used to give shaders access to the texture above (SRV = shader resource view)
 
 // This texture will have the scene renderered on it. Then the texture is then used for post-processing
-ID3D11Texture2D*          gSceneTextureCopy = nullptr; // This object represents the memory used by the texture on the GPU
-ID3D11RenderTargetView*   gSceneRenderTargetCopy = nullptr; // This object is used when we want to render to the texture above
-ID3D11ShaderResourceView* gSceneTextureSRVCopy = nullptr; // This object is used to give shaders access to the texture above (SRV = shader resource view)
+// Used for bloom and other post processes that need the sharp scene to be saved
+ID3D11Texture2D*          gSceneTextureCopy = nullptr; 
+ID3D11RenderTargetView*   gSceneRenderTargetCopy = nullptr; 
+ID3D11ShaderResourceView* gSceneTextureSRVCopy = nullptr; 
+
+// Used for motion blur only, every other frame scene is getting saved (PF stands for previous frame)
+ID3D11Texture2D*		  gSceneTexturePF = nullptr;
+ID3D11RenderTargetView*   gSceneRenderTargetPF = nullptr;
+ID3D11ShaderResourceView* gSceneTextureSRVPF = nullptr;
 
 // Additional textures used for specific post-processes
 ID3D11Resource*			  gStarLensMap = nullptr;
@@ -255,7 +263,7 @@ ID3D11ShaderResourceView* nullSRV = nullptr;
 //****************************
 
 // Helper method signatures
-void SaveCurrentSceneToTexture(int index);
+void SaveCurrentSceneToTexture(int index, bool motionBlur);
 void AddProcessAndMode(PostProcess process, PostProcessMode mode);
 void RemoveProcessAndMode();
 std::array<CVector3, 4> GetWindowPoint(int windowIndex);
@@ -398,6 +406,13 @@ bool InitGeometry()
 		return false;
 	}
 
+	// Previous Frame texture
+	if (FAILED(gD3DDevice->CreateTexture2D(&sceneTextureDesc, NULL, &gSceneTexturePF)))
+	{
+		gLastError = "Error creating scene texture two";
+		return false;
+	}
+
 	// We created the scene texture above, now we get a "view" of it as a render target, i.e. get a special pointer to the texture that
 	// we use when rendering to it (see RenderScene function below)
 	if (FAILED(gD3DDevice->CreateRenderTargetView(gSceneTexture, NULL, &gSceneRenderTarget)))
@@ -406,15 +421,22 @@ bool InitGeometry()
 		return false;
 	}
 
-	// Second texture
+	// Second RT
 	if (FAILED(gD3DDevice->CreateRenderTargetView(gSceneTextureTwo, NULL, &gSceneRenderTargetTwo)))
 	{
 		gLastError = "Error creating scene render target view";
 		return false;
 	}
 
-	// Copy texture
+	// Copy RT
 	if (FAILED(gD3DDevice->CreateRenderTargetView(gSceneTextureCopy, NULL, &gSceneRenderTargetCopy)))
+	{
+		gLastError = "Error creating scene render target view";
+		return false;
+	}
+
+	// Previous Frame RT
+	if (FAILED(gD3DDevice->CreateRenderTargetView(gSceneTexturePF, NULL, &gSceneRenderTargetPF)))
 	{
 		gLastError = "Error creating scene render target view";
 		return false;
@@ -432,21 +454,26 @@ bool InitGeometry()
 		return false;
 	}
 
-	// Second texture
+	// Second SRV
 	if (FAILED(gD3DDevice->CreateShaderResourceView(gSceneTextureTwo, &srDesc, &gSceneTextureSRVTwo)))
 	{
 		gLastError = "Error creating scene shader resource view";
 		return false;
 	}
 
-	// Copy texture
+	// Copy SRV
 	if (FAILED(gD3DDevice->CreateShaderResourceView(gSceneTextureCopy, &srDesc, &gSceneTextureSRVCopy)))
 	{
 		gLastError = "Error creating scene shader resource view";
 		return false;
 	}
 
-
+	// Previous Frame SRV
+	if (FAILED(gD3DDevice->CreateShaderResourceView(gSceneTexturePF, &srDesc, &gSceneTextureSRVPF)))
+	{
+		gLastError = "Error creating scene shader resource view";
+		return false;
+	}
 
 	//**** Create Shadow Map texture ****//
 
@@ -572,17 +599,25 @@ void ReleaseResources()
 {
 	ReleaseStates();
 
+	// Depth map
 	if (gShadowMap1DepthStencil)  gShadowMap1DepthStencil->Release();
 	if (gShadowMap1SRV)           gShadowMap1SRV->Release();
 	if (gShadowMap1Texture)       gShadowMap1Texture->Release();
 
+	// First 
 	if (gSceneTextureSRV)              gSceneTextureSRV->Release();
 	if (gSceneRenderTarget)            gSceneRenderTarget->Release();
 	if (gSceneTexture)                 gSceneTexture->Release();
 
+	// Second
 	if (gSceneTextureSRVTwo)              gSceneTextureSRVTwo->Release();
 	if (gSceneRenderTargetTwo)            gSceneRenderTargetTwo->Release();
 	if (gSceneTextureTwo)                 gSceneTextureTwo->Release();
+
+	// Previous Frame
+	if (gSceneTextureSRVPF)              gSceneTextureSRVPF->Release();
+	if (gSceneRenderTargetPF)            gSceneRenderTargetPF->Release();
+	if (gSceneTexturePF)                 gSceneTexturePF->Release();
 
 	if (gDistortMapSRV)                gDistortMapSRV->Release();
 	if (gDistortMap)                   gDistortMap->Release();
@@ -790,6 +825,11 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	{
 		gD3DContext->PSSetShader(gCopyPostProcess, nullptr, 0);
 	}
+	else if (postProcess == PostProcess::MotionBlur)
+	{
+		gD3DContext->PSSetShader(gMotionBlurProcess, nullptr, 0);
+		gD3DContext->PSSetShaderResources(1, 1, &gSceneTextureSRVPF);
+	}
 	else if (postProcess == PostProcess::DepthOfField)
 	{
 		gPostProcessingConstants.distanceToFocusedObject = Distance(gCamera->Position(), gCube->Position());
@@ -911,8 +951,6 @@ void SelectPostProcessShaderAndTextures(PostProcess postProcess, float frameTime
 	{
 		gD3DContext->PSSetShader(gDistortPostProcess, nullptr, 0);
 
-		// Set the level of distortion
-		gPostProcessingConstants.distortLevel = 0.03f;
 
 		// Give pixel shader access to the distortion texture (containts 2D vectors (in R & G) to shift the texture UVs to give a cut-glass impression)
 		gD3DContext->PSSetShaderResources(1, 1, &gDistortMapSRV);
@@ -1240,7 +1278,7 @@ void RenderScene(float frameTime)
 			{
 				if (gCurrentPostProcess == PostProcess::Bloom || gCurrentPostProcess == PostProcess::DepthOfField)
 				{
-					SaveCurrentSceneToTexture(processIndex);
+					SaveCurrentSceneToTexture(processIndex, false);
 				}
 
 				FullScreenPostProcess(gCurrentPostProcess, frameTime, processIndex++);
@@ -1282,13 +1320,12 @@ void RenderScene(float frameTime)
 // Update models and camera. frameTime is the time passed since the last frame
 void UpdateScene(float frameTime)
 {
-	//***********
 
-	// Select post process on keys
-	// Switched from F1, F2, F3 to Z, X, C because I don't have F keys on mey keyboard
-	//if (KeyHit(Key_Z))  gCurrentPostProcessMode = PostProcessMode::Fullscreen; // F1
-	//if (KeyHit(Key_X))  gCurrentPostProcessMode = PostProcessMode::Area; // F2
-	//if (KeyHit(Key_C))  gCurrentPostProcessMode = PostProcessMode::Polygon; // F3
+	isOtherFrame = !isOtherFrame;
+	if (isOtherFrame)
+	{
+		SaveCurrentSceneToTexture(0, true);
+	}
 
 	if (KeyHit(Key_1)) { AddProcessAndMode(PostProcess::VerticalColourGradient, PostProcessMode::Fullscreen); }
 	
@@ -1345,6 +1382,8 @@ void UpdateScene(float frameTime)
 	}
 
 	if (KeyHit(Key_P)) { AddProcessAndMode(PostProcess::Burn, PostProcessMode::Fullscreen); }
+
+	if (KeyHit(Key_Z)) { AddProcessAndMode(PostProcess::MotionBlur, PostProcessMode::Fullscreen); }
 	
 	if (KeyHit(Key_0)) { gPostProcessAndModeStack.clear(); CreateWindowPostProcesses(windowPostProcesses); }
 
@@ -1385,7 +1424,7 @@ void UpdateScene(float frameTime)
 	}
 }
 
-void SaveCurrentSceneToTexture(int index)
+void SaveCurrentSceneToTexture(int index, bool motionBlur)
 {
 	// Using special vertex shader that creates its own data for a 2D screen quad
 	gD3DContext->VSSetShader(g2DQuadVertexShader, nullptr, 0);
@@ -1405,8 +1444,18 @@ void SaveCurrentSceneToTexture(int index)
 	// These lines unbind the scene texture from the pixel shader to stop DirectX issuing a warning when we try to render to it again next frame
 	gD3DContext->PSSetShaderResources(0, 1, &nullSRV);
 
-	// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
-	gD3DContext->OMSetRenderTargets(1, &gSceneRenderTargetCopy, gDepthStencil); // Where to render
+	if (motionBlur)
+	{
+		// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
+		gD3DContext->OMSetRenderTargets(1, &gSceneRenderTargetPF, gDepthStencil); // Where to render
+		
+	}
+	else
+	{
+		// Select the back buffer to use for rendering. Not going to clear the back-buffer because we're going to overwrite it all
+		gD3DContext->OMSetRenderTargets(1, &gSceneRenderTargetCopy, gDepthStencil); // Where to render
+	}
+	
 
 	if (index % 2 == 0)
 	{

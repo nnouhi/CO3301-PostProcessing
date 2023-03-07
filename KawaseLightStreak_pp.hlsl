@@ -101,7 +101,7 @@ float4 main(PostProcessingInput input) : SV_Target
 {
     float att = 0.98;
     const int samp = 4;
-    float pSize = 1.0;
+    float pSize = 2.0;
     float scale = 1.0;
     
     if (gKawaseIter == 4)

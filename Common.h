@@ -104,8 +104,6 @@ extern PerModelConstants gPerModelConstants;      // This variable holds the CPU
 extern ID3D11Buffer*     gPerModelConstantBuffer; // This variable controls the GPU-side constant buffer related to the above structure
 
 
-
-
 //**************************
 
 // Settings used by post-processes - must match the similar structure in the Common.hlsli shader file
@@ -130,8 +128,8 @@ struct PostProcessingConstants
 	float    burnHeight;
 	CVector3 paddingC;
 
-	// Distort post-process settings
-	float    distortLevel;
+	// DOF post-process settings
+	float distanceToFocusedObject;
 	CVector3 paddingD;
 
 	// Gaussian Blur post-process settings
@@ -161,11 +159,10 @@ struct PostProcessingConstants
 	CVector3 bottomColour;
 	float paddingK;
 
+	// Dualfiltering post-process settings
 	float dualFilterIteration;
 	CVector3 paddingL;
 
-	float distanceToFocusedObject;
-	CVector3 paddingM;
 };
 extern PostProcessingConstants gPostProcessingConstants;      // This variable holds the CPU-side constant buffer described above
 extern ID3D11Buffer*           gPostProcessingConstantBuffer; // This variable controls the GPU-side constant buffer related to the above structure

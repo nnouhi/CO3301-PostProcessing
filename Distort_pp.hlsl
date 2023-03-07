@@ -30,7 +30,7 @@ float4 main(PostProcessingInput input) : SV_Target
 {
 	const float lightStrength = 0.015f;
 	const float glassDarken = 0.8f;
-	
+    const float gDistortLevel = 0.03f;
 	// Get distort texture colour
     float3 distortTexture = DistortMap.Sample( TrilinearWrap, input.areaUV ).rgb;
 
